@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2322823f'/><path d='M16 5c-3 1-5 4-5 8 0 6 5 13 5 13s5-7 5-13c0-4-2-7-5-8z' fill='white' opacity='.95'/></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Interaktif - RENCANA ZONASI Kab. Luwu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Map (fills the map container) */
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        /* ============================================ */
+        /* CUSTOM CSS (tidak bisa diganti Tailwind)     */
+        /* ============================================ */
+
+        /* Dock 3D */
+        .dock-container-3d {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 998;
+            padding: 0 24px;
+            perspective: 800px;
+        }
+        .dock-shelf {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 38px;
+            background: linear-gradient(to bottom, rgba(70,70,70,0.8) 0%, rgba(20,20,20,0.9) 100%);
+            border-top: 1px solid rgba(255,255,255,0.4);
+            transform: rotateX(45deg);
+            transform-origin: bottom center;
+            border-radius: 6px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.7), inset 0 2px 5px rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            z-index: 0;
+        }
+        .dock-icons {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+            padding: 0 16px 6px 16px;
+            list-style: none;
+            margin: 0;
+        }
+        .dock-icons li { position: relative; }
+        .dock-icons button {
+            background: transparent;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            outline: none;
+            transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .dock-icons button:hover { transform: translateY(-10px); }
+        .dock-icon {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #ffffff;
+            background: linear-gradient(135deg, #9ca3af 0%, #4b5563 100%);
+            border-radius: 11px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            -webkit-box-reflect: below 2px linear-gradient(transparent 50%, rgba(0,0,0,0.35));
+        }
+        .map-tool-btn.active .dock-icon {
+            background: linear-gradient(135deg, #68d391 0%, #38a169 100%);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4), 0 0 12px rgba(72,187,120,0.35);
+        }
+        .dock-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 22px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 5px;
+            opacity: 0;
+            pointer-events: none;
+            white-space: nowrap;
+            transition: opacity 0.2s, transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .dock-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(0,0,0,0.8) transparent transparent transparent;
+        }
+        .dock-icons button:hover .dock-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        /* Sidebar transitions */
+        #sidebarLeft, #legendPanel {
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
+        }
+        #sidebarLeft.collapsed { transform: translateX(-380px); opacity: 0; pointer-events: none; }
+        #legendPanel.collapsed { transform: translateX(370px); opacity: 0; pointer-events: none; }
+
+        /* Layer panel scrollbar */
+        .layer-list::-webkit-scrollbar { width: 4px; }
+        .layer-list::-webkit-scrollbar-track { background: #f1f5f9; }
+        .layer-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        /* Layer group */
+        .layer-group { margin-bottom: 5px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+        .layer-group-header {
+            display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+            cursor: pointer; font-weight: 600; font-size: 12px; color: #1b3d22;
+            background: #fafcf9; transition: background 0.2s; user-select: none;
+        }
+        .layer-group-header:hover { background: #f0f7f4; }
+        .layer-group-header .expand-icon { font-size: 10px; transition: transform 0.25s ease; color: #718096; }
+        .layer-group.expanded .expand-icon { transform: rotate(180deg); }
+        .layer-group-items { display: none; padding: 4px 10px 8px 10px; background: #fff; border-top: 1px solid #e2e8f0; }
+        .layer-group.expanded .layer-group-items { display: block; }
+
+        /* Layer items */
+        .layer-item {
+            display: flex; align-items: center; gap: 8px; padding: 5px 4px;
+            cursor: pointer; border-radius: 5px; transition: background 0.15s;
+            font-size: 12px; font-weight: 500; color: #2d3748;
+        }
+        .layer-item:hover { background: #f0f7f4; }
+        .layer-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: #15803d; cursor: pointer; flex-shrink: 0; border-radius: 3px; }
+        .layer-weight { font-size: 10px; color: #718096; font-weight: 600; background: #edf2f7; padding: 1px 5px; border-radius: 3px; font-family: monospace; }
+
+        /* Legend */
+        .legend-title {
+            font-size: 13px; font-weight: 700; color: #1b3d22; margin-bottom: 4px;
+            line-height: 1.3; border-left: 3px solid #15803d; padding-left: 8px;
+        }
+        .legend-subtitle {
+            font-size: 10px; font-weight: 600; color: #718096; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 4px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .legend-item { display: flex; align-items: center; gap: 10px; padding: 3px 4px; font-size: 12px; font-weight: 500; color: #2d3748; }
+        .legend-list { margin-bottom: 14px; }
+        .legend-color { width: 20px; height: 13px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        /* Scale di kiri, zoom di kanan */
+        .maplibregl-ctrl-bottom-right {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-end !important;
+            gap: 6px !important;
+        }
+        .maplibregl-ctrl-scale {
+            order: 1 !important;
+            margin-bottom: 10px !important;
+            background: rgb(255 255 255 / 49%) !important;
+            border: 2px solid #777 !important;
+            border-top: none !important;
+            border-radius: 0 0 4px 4px !important;
+            padding: 2px 5px 1px !important;
+            line-height: 1.1 !important;
+            font-weight: 600 !important;
+            color: #334155 !important;
+            text-shadow: 1px 1px #fff !important;
+            box-sizing: border-box !important;
+        }
+        .maplibregl-ctrl-group {
+            order: 2 !important;
+            margin-bottom: 10px !important;
+        }
+
+        /* Attribution di kiri-bawah */
+        .maplibregl-ctrl-attrib {
+            position: fixed !important;
+            bottom: 6px !important;
+            left: 6px !important;
+            right: auto !important;
+            margin: 0 !important;
+        }
+
+        /* Popups */
+        .maplibregl-popup-content {
+            background: #fff !important;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.18) !important;
+            border-radius: 12px !important; padding: 0 !important;
+            font-family: 'Inter', sans-serif !important; color: #2d3748 !important;
+        }
+        .maplibregl-popup-tip {
+            border-top-color: #fff !important;
+        }
+        .maplibregl-popup-anchor-bottom .maplibregl-popup-content {
+            border-bottom-left-radius: 4px !important;
+            border-bottom-right-radius: 4px !important;
+        }
+        .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+            border-top-color: #fff !important;
+            border-width: 10px 10px 0 10px !important;
+            margin-top: -1px !important;
+        }
+        .maplibregl-popup-close-button { width: 28px !important; height: 28px !important; font-size: 18px !important; padding: 4px !important; color: #a0aec0 !important; }
+        .maplibregl-popup-close-button:hover { color: #2d3748 !important; background: rgba(0,0,0,0.06) !important; }
+        .popup-title {
+            background: linear-gradient(135deg, #15803d 0%, #3c7e44 100%);
+            color: #ffffff;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            line-height: 1.2;
+        }
+        .popup-body { max-height: 260px; overflow-y: auto; }
+        .popup-body::-webkit-scrollbar { width: 3px; }
+        .popup-body::-webkit-scrollbar-track { background: transparent; }
+        .popup-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .popup-section { margin-bottom: 0; }
+        .popup-section + .popup-section { border-top: 1px solid #e2e8f0; }
+        .popup-rows { padding: 0; }
+        .popup-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 5px 10px;
+            gap: 10px;
+        }
+        .popup-row:not(:last-child) { border-bottom: 1px solid #edf2f7; }
+        .popup-label {
+            font-size: 10px;
+            font-weight: 500;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .popup-value {
+            font-size: 12px;
+            font-weight: 500;
+            color: #334155;
+            text-align: right;
+            word-break: break-word;
+            line-height: 1.3;
+        }
+
+        /* Basemap Selector Modal */
+        .basemap-modal {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(255,255,255,0.98);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 997;
+            padding: 12px;
+            display: none;
+            gap: 10px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+            opacity: 0;
+        }
+        .basemap-modal.show {
+            display: flex;
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .basemap-card {
+            width: 75px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            text-align: center;
+        }
+        .basemap-thumb {
+            width: 60px;
+            height: 42px;
+            border-radius: 7px;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+            margin-bottom: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .basemap-card:hover .basemap-thumb,
+        .basemap-card.active .basemap-thumb {
+            border-color: #15803d;
+        }
+        .basemap-label {
+            font-size: 10px;
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        /* Measure tooltip */
+        #measureTooltip { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 1001; display: none; }
+        #measureTooltip.show { display: block; }
+
+        /* Loading overlay */
+        .loader { border-top-color: #15803d; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Leaflet zoom overrides (not used but keep for ref) */
+        .leaflet-control-attribution { font-size: 10px !important; }
+        #coordDisplay { font-family: 'Inter', monospace; }
+
+        /* Print */
+        @media print {
+            @page { margin: 0; size: landscape; }
+            body { margin: 0; padding: 0; height: auto; min-height: auto; }
+            .hide-print, .dock-container-3d, #searchBox, #navLinks, #mobileMenuBtn, #mobileMenu,
+            .maplibregl-ctrl-bottom-right, .maplibregl-ctrl.maplibregl-ctrl-attrib,
+            #toggleSidebarBtn, #toggleLegendBtn, #sidebarLeft, #legendPanel,
+            #measureTooltip, #coordDisplay, #loadingOverlay {
+                display: none !important;
+            }
+            #topNav {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: 64px !important;
+                box-shadow: none !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            #topNav .h-16 { height: 64px !important; }
+            #topNav .bg-\[\#15803d\] {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            #map { position: absolute !important; top: 64px !important; left: 0 !important; right: 0 !important; bottom: 0 !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/90 z-[9999] flex flex-col items-center justify-center">
+        <div class="loader w-14 h-14 border-4 border-gray-200 rounded-full mb-4"></div>
+        <p class="text-gray-600 font-medium text-lg">Memuat Peta...</p>
+        <p class="text-gray-400 text-sm mt-2">Mengambil data spasial</p>
+    </div>
+
+    <!-- Navbar -->
+    <nav id="topNav" class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a class="flex items-center gap-2 flex-shrink-0 no-underline">
+                    <span class="h-10 w-10 flex items-center justify-center rounded-lg bg-green-700">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M8 11h8"/>
+                            <path d="M12 8v6"/>
+                        </svg>
+                    </span>
+                    <div class="hidden sm:block">
+                        <h1 class="text-base font-bold text-[#1b3d22] leading-tight uppercase">RENCANA ZONASI</h1>
+                        <p class="text-xs text-gray-500 leading-tight">Kabupaten Luwu</p>
+                    </div>
+                </a>
+
+                <!-- Search Box in Navbar -->
+                <div id="searchBox" class="flex items-center rounded-lg shadow overflow-hidden border border-gray-200">
+                    <input type="text" id="searchInput" placeholder="Cari lokasi..."
+                           class="w-36 sm:w-52 px-3 py-1.5 text-xs outline-none text-gray-700 placeholder-gray-400">
+                    <button id="searchBtn" onclick="searchLocation()" class="px-3 py-1.5 bg-green-700 text-white hover:bg-[#1b3d22] transition">
+                        <i class="fas fa-search text-xs"></i>
+                    </button>
+                </div>
+
+                <div id="navLinks" class="hidden md:flex items-center gap-6">
+                    <a href="/" class="text-gray-700 hover:text-green-700 font-medium text-sm transition">Beranda</a>
+                    <a href="modul.html" class="text-gray-700 hover:text-green-700 font-medium text-sm transition">Modul Pelatihan</a>
+                    <a class="text-green-700 font-semibold text-sm transition border-b-2 border-green-600 pb-1">Peta Interaktif</a>
+                </div>
+
+                <button id="mobileMenuBtn" class="md:hidden text-gray-700 hover:text-green-700 focus:outline-none">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+            <div id="mobileMenu" class="hidden md:hidden pb-4">
+                <a href="#" class="block py-2 text-gray-700 hover:text-green-700 font-medium text-sm" onclick="alert('Beranda')">Beranda</a>
+                <a href="#" class="block py-2 text-gray-700 hover:text-green-700 font-medium text-sm" onclick="alert('Daftar Modul')">Daftar Modul</a>
+                <a href="map.html" class="block rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-green-700 font-medium text-sm">Peta Interaktif</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Map Container -->
+    <div class="relative flex-grow overflow-hidden">
+        <div id="map"></div>
+
+        <!-- Toggle Sidebar Button (Left) -->
+        <button id="toggleSidebarBtn"
+                class="absolute top-4 z-[1000] bg-white shadow-lg rounded-r-lg px-1.5 py-2 hover:bg-gray-50 transition"
+                style="left: 302px;" onclick="toggleSidebarLeft()"
+                title="Sembunyikan Panel Layer">
+            <i class="fas fa-chevron-left text-gray-500 text-xs"></i>
+        </button>
+
+        <!-- Layer Sidebar (Left) -->
+        <div id="sidebarLeft"
+             class="absolute top-4 left-4 z-[999] w-[290px] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden"
+             style="bottom: 80px;">
+            <div class="bg-green-700 text-white px-3 py-2 flex items-center justify-between flex-shrink-0">
+                <h5 class="font-semibold text-sm flex items-center gap-2">
+                    <i class="fas fa-layer-group"></i> Layers
+                </h5>
+                <button onclick="toggleSidebarLeft()" class="text-white/80 hover:text-white transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="layer-list flex-grow overflow-y-auto p-3" style="max-height: calc(100vh - 240px);">
+                <p class="text-xs text-gray-500 italic mb-3">Centang nama layer untuk menampilkan ke dalam peta</p>
+                <div id="layerGroups"></div>
+            </div>
+        </div>
+
+        <!-- Toggle Legend Button (Right) -->
+        <button id="toggleLegendBtn"
+                class="absolute top-4 z-[1000] bg-white shadow-lg rounded-l-lg px-1.5 py-2 hover:bg-gray-50 transition"
+                style="right: 8px;" onclick="toggleLegend()"
+                title="Tampilkan Panel Legenda">
+            <i class="fas fa-chevron-left text-gray-500 text-xs"></i>
+        </button>
+
+        <!-- Legend Sidebar (Right) -->
+        <div id="legendPanel"
+             class="absolute top-4 right-4 z-[999] w-[300px] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden collapsed"
+             style="max-height: calc(100vh - 240px);">
+            <div class="bg-green-700 text-white px-3 py-2 flex items-center justify-between flex-shrink-0">
+                <h5 class="font-semibold text-sm flex items-center gap-2">
+                    <i class="fas fa-list-ul"></i> Legenda
+                </h5>
+                <button onclick="toggleLegend()" class="text-white/80 hover:text-white transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="layer-list flex-grow overflow-y-auto p-3">
+                <div id="legendItems">
+                    <p class="text-xs text-gray-500 italic">Aktifkan layer untuk menampilkan legenda.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Basemap Selector Overlay -->
+        <div class="basemap-modal" id="basemapModal">
+            <div class="basemap-card active" onclick="switchBasemap('osm', this)">
+                <div class="basemap-thumb" style="background-color:#f2efe9;background-image:url('https://tile.openstreetmap.org/5/16/11.png')"></div>
+                <div class="basemap-label">OSM Streets</div>
+            </div>
+            <div class="basemap-card" onclick="switchBasemap('satellite', this)">
+                <div class="basemap-thumb" style="background-color:#1a1a2e;background-image:url('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/5/16/11')"></div>
+                <div class="basemap-label">Satellite</div>
+            </div>
+            <div class="basemap-card" onclick="switchBasemap('light', this)">
+                <div class="basemap-thumb" style="background-color:#f0ede8;background-image:url('https://a.basemaps.cartocdn.com/rastertiles/voyager/5/16/11.png')"></div>
+                <div class="basemap-label">Carto Light</div>
+            </div>
+            <div class="basemap-card" onclick="switchBasemap('dark', this)">
+                <div class="basemap-thumb" style="background-color:#191b22;background-image:url('https://a.basemaps.cartocdn.com/dark_all/5/16/11.png')"></div>
+                <div class="basemap-label">Dark Mode</div>
+            </div>
+        </div>
+
+        <!-- Coordinates Display -->
+        <div class="absolute z-[997] bg-white/20 backdrop-blur-sm rounded-lg shadow px-2 py-1 text-xs text-gray-500" id="coordDisplay" style="bottom:11px;right:150px;">
+            -3.3483&deg; S, 120.2211&deg; E | Zoom: 9
+        </div>
+
+        <!-- Measure Tooltip -->
+        <div id="measureTooltip"
+             class="bg-black/80 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg pointer-events-none"
+             style="bottom: 90px;">
+            Jarak: 0.00 km
+        </div>
+
+        <!-- Dock Container (3D) -->
+        <div class="dock-container-3d">
+            <div class="dock-shelf"></div>
+            <ul class="dock-icons">
+                <li>
+                    <button class="map-tool-btn active" data-tool="layer" id="btnLayers" onclick="toggleSidebarLeft()">
+                        <span class="dock-icon"><i class="fas fa-layer-group"></i></span>
+                        <span class="dock-tooltip">Layers</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="legend" id="btnLegend" onclick="toggleLegend()">
+                        <span class="dock-icon"><i class="fas fa-list-ul"></i></span>
+                        <span class="dock-tooltip">Legenda</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="select" id="btnSelect" onclick="toggleSelectMode()">
+                        <span class="dock-icon"><i class="fas fa-object-group"></i></span>
+                        <span class="dock-tooltip">Selection</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="basemap" id="btnBasemap" onclick="toggleBasemapSelector()">
+                        <span class="dock-icon"><i class="fas fa-map"></i></span>
+                        <span class="dock-tooltip">Base Map</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="home" onclick="fitToBounds()">
+                        <span class="dock-icon"><i class="fas fa-location-crosshairs"></i></span>
+                        <span class="dock-tooltip">Ke Luwu</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="info" id="btnInfo" onclick="showAbout()">
+                        <span class="dock-icon"><i class="fas fa-circle-info"></i></span>
+                        <span class="dock-tooltip">Tentang</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="measure" id="btnMeasure" onclick="toggleMeasureTool()">
+                        <span class="dock-icon"><i class="fas fa-ruler-combined"></i></span>
+                        <span class="dock-tooltip">Ukur Jarak</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="fullscreen" id="btnFullscreen" onclick="toggleFullscreen()">
+                        <span class="dock-icon"><i class="fas fa-expand"></i></span>
+                        <span class="dock-tooltip">Layar Penuh</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="print" title="Cetak" onclick="window.print()">
+                        <span class="dock-icon"><i class="fas fa-print"></i></span>
+                        <span class="dock-tooltip">Cetak Peta</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="map-tool-btn" data-tool="download" onclick="downloadActiveLayers()">
+                        <span class="dock-icon"><i class="fas fa-download"></i></span>
+                        <span class="dock-tooltip">Download GeoJSON</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="aboutModal" class="fixed inset-0 bg-black/50 z-[2000] hidden items-center justify-center backdrop-blur-sm" style="display:none;">
+        <div class="bg-white w-[400px] max-w-[90%] rounded-2xl p-5 shadow-2xl text-center">
+            <h3 class="text-base font-bold text-[#1b3d22] mb-2">WebGIS Rencana Zonasi</h3>
+            <p class="text-sm text-gray-700 leading-relaxed mb-1"><strong>Kabupaten Luwu, Sulawesi Selatan</strong></p>
+            <p class="text-xs text-gray-700 leading-relaxed mb-2">Sistem informasi geografis interaktif ini menyajikan analisis kerentanan fisik, kerentanan sosial-ekonomi, daya dukung lingkungan, kemampuan lahan, kapasitas adaptasi, serta kesetimbangan regional wilayah Kabupaten Luwu.</p>
+            <p class="text-xs text-gray-400 mb-4">Teknologi: MapLibre GL JS, Turf.js, OpenStreetMap Tiles, Vector GeoJSON.</p>
+            <button onclick="closeAbout()" class="bg-green-700 text-white px-5 py-1.5 rounded-lg font-semibold text-sm hover:bg-[#1b3d22] transition">Tutup</button>
+        </div>
+    </div>
+
+    <script>
+    // ============================================
+    // LAYER CONFIGURATION
+    // ============================================
+    const layerConfig = [
+        {
+            group: "X1_KF Kerentanan Fisik (0.136)",
+            icon: "🌿",
+            expanded: true,
+            layers: [
+                { id: "x1_kf_1", name: "X1.1 Kemiringan Lereng", file: "geojson/X1_KF_1_Kemiringan_Lereng.geojson", weight: "0.001" },
+                { id: "x1_kf_2", name: "X1.2 Curah Hujan", file: "geojson/X1_KF_2_Curah_Hujan.geojson", weight: "0.037" },
+                { id: "x1_kf_3", name: "X1.3 Rawan Bencana", file: "geojson/X1_KF_3_Rawan_Bencana.geojson", weight: "0.051" },
+                { id: "x1_kf_4", name: "X1.4 Kenaikan Muka Laut", file: "geojson/X1_KF_4_Kenaikan_Muka_Laut.geojson", weight: "0.052" },
+            ]
+        },
+        {
+            group: "X2_KS Kerentanan Sosek (0.080)",
+            icon: "🌾",
+            expanded: false,
+            layers: [
+                { id: "x2_ks_1", name: "X2.1 Kepadatan Penduduk", file: "geojson/X2_KS_1_Kepadatan_Penduduk.geojson", weight: "0.011" },
+                { id: "x2_ks_2", name: "X2.2 Penduduk Miskin", file: "geojson/X2_KS_2_Penduduk_Miskin.geojson", weight: "0.005" },
+                { id: "x2_ks_3", name: "X2.3 Rasio Ketergantungan", file: "geojson/X2_KS_3_Rasio_Ketergantungan.geojson", weight: "0.027" },
+                { id: "x2_ks_4", name: "X2.4 Akses Kesehatan", file: "geojson/X2_KS_4_Akses_Kesehatan.geojson", weight: "0.034" },
+                { id: "x2_ks_5", name: "X2.5 Diversifikasi MatPen", file: "geojson/X2_KS_5_Diversifikasi_MatPen.geojson", weight: "0.008" },
+            ]
+        },
+        {
+            group: "X3_DDLH Daya Dukung LH (0.258)",
+            icon: "⛰️",
+            expanded: false,
+            layers: [
+                { id: "x3_ddlh_1", name: "X3.1 Tutupan Vegetasi", file: "geojson/X3_DDLH_1_Tutupan_Vegetasi.geojson", weight: "0.080" },
+                { id: "x3_ddlh_2", name: "X3.2 Ketersediaan Air", file: "geojson/X3_DDLH_2_Ketersediaan_Air.geojson", weight: "0.103" },
+                { id: "x3_ddlh_3", name: "X3.3 Daya Tampung Lahan", file: "geojson/X3_DDLH_3_Daya_Tampung_Lahan.geojson", weight: "0.022" },
+                { id: "x3_ddlh_4", name: "X3.4 Ruang Terbuka Hijau", file: "geojson/X3_DDLH_4_Ruang_Terbuka_Hijau.geojson", weight: "0.017" },
+                { id: "x3_ddlh_5", name: "X3.5 Kualitas Air Sungai", file: "geojson/X3_DDLH_5_Kualitas_Air_Sungai.geojson", weight: "0.074" },
+            ]
+        },
+        {
+            group: "X4_KL Kemampuan Lahan (0.258)",
+            icon: "🏔️",
+            expanded: false,
+            layers: [
+                { id: "x4_kl_1", name: "X4.1 Kemampuan Lahan", file: "geojson/X4_KL_1_Kemampuan_Lahan.geojson", weight: "0.080" },
+                { id: "x4_kl_2", name: "X4.2 Penggunaan Lahan Eksisting", file: "geojson/X4_KL_2_Penggunaan_Lahan_Eksisting.geojson", weight: "0.103" },
+                { id: "x4_kl_3", name: "X4.3 Kedalaman Tanah", file: "geojson/X4_KL_3_Kedalaman_Tanah.geojson", weight: "0.022" },
+                { id: "x4_kl_4", name: "X4.4 Infrastruktur Aksesibilitas", file: "geojson/X4_KL_4_Infrastruktur_Aksesibilitas.geojson", weight: "0.017" },
+                { id: "x4_kl_5", name: "X4.5 Jarak Pusat Kegiatan", file: "geojson/X4_KL_5_Jarak_Pusat_Kegiatan.geojson", weight: "0.074" },
+            ]
+        },
+        {
+            group: "X5_KA Kapasitas Adaptasi (0.080)",
+            icon: "🏗️",
+            expanded: false,
+            layers: [
+                { id: "x5_ka_1", name: "X5.1 Pendidikan", file: "geojson/X5_KA_1_Pendidikan.geojson", weight: "0.011" },
+                { id: "x5_ka_2", name: "X5.2 Akses Informasi Spasial", file: "geojson/X5_KA_2_Akses_Informasi_Spasial.geojson", weight: "0.005" },
+                { id: "x5_ka_3", name: "X5.3 Kelembagaan Lokal", file: "geojson/X5_KA_3_Kelembagaan_Lokal.geojson", weight: "0.027" },
+                { id: "x5_ka_4", name: "X5.4 Kapasitas Fiskal", file: "geojson/X5_KA_4_Kapasitas_Fiskal.geojson", weight: "0.034" },
+                { id: "x5_ka_5", name: "X5.5 Infrastruktur Mitigasi", file: "geojson/X5_KA_5_Infrastruktur_Mitigasi.geojson", weight: "0.008" },
+            ]
+        },
+        {
+            group: "X6_KR Kesetimbangan Regional (0.258)",
+            icon: "🌍",
+            expanded: false,
+            layers: [
+                { id: "x6_kr_1", name: "X6.1 Kesesuaian Lahan Kakao", file: "geojson/X6_KR_1_Kesesuaian_Lahan_Kakao.geojson", weight: "0.080" },
+                { id: "x6_kr_2", name: "X6.2 Kesesuaian Lahan Padi", file: "geojson/X6_KR_2_Kesesuaian_Lahan_Padi.geojson", weight: "0.103" },
+                { id: "x6_kr_3", name: "X6.3 Soil Fertility Index", file: "geojson/X6_KR_3_Soil_Fertility_Index.geojson", weight: "0.022" },
+                { id: "x6_kr_4", name: "X6.4 Daya Dukung Lahan", file: "geojson/X6_KR_4_DD_Lahan.geojson", weight: "0.017" },
+                { id: "x6_kr_5", name: "X6.5 Daya Dukung Air", file: "geojson/X6_KR_5_DD_Air.geojson", weight: "0.074" },
+                { id: "x6_kr_6", name: "X6.6 NKT/SKT", file: "geojson/X6_KR_6_NKT_SKT.geojson", weight: "0.074" },
+            ]
+        }
+    ];
+
+    const classColors = {
+        1: "#ff5252",
+        2: "#ff9100",
+        3: "#ffd600",
+        4: "#4caf50",
+        5: "#2979ff"
+    };
+
+    let map;
+    let activeLayers = new Map();
+    let measurementMode = false;
+    let selectMode = false;
+    let selectedFeatures = [];
+    let measurePoints = [];
+    let measureGeoJSON = { type: 'FeatureCollection', features: [] };
+
+    // ============================================
+    // MAP & APP INITIALIZATION
+    // ============================================
+    document.addEventListener('DOMContentLoaded', () => {
+        initMap();
+        renderLayerGroups();
+    });
+
+    window.addEventListener('beforeprint', () => {
+        document.querySelectorAll('#sidebarLeft, #legendPanel, #toggleSidebarBtn, #toggleLegendBtn, .dock-container-3d, #searchBox, #navLinks, #mobileMenuBtn, #mobileMenu, .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-attrib, #measureTooltip, #coordDisplay').forEach(el => {
+            el.classList.add('hide-print');
+        });
+        if (typeof map !== 'undefined' && map) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => { map.resize(); });
+            });
+        }
+    });
+
+    window.addEventListener('afterprint', () => {
+        document.querySelectorAll('.hide-print').forEach(el => el.classList.remove('hide-print'));
+        if (typeof map !== 'undefined' && map) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => { map.resize(); });
+            });
+        }
+    });
+
+    function initMap() {
+        map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'osm': {
+                        type: 'raster',
+                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '&copy; OpenStreetMap'
+                    }
+                },
+                layers: [{ id: 'osm-layer', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 19 }]
+            },
+            center: [120.2211, -3.1683],
+            zoom: 8.5,
+            maxZoom: 18,
+            minZoom: 5
+        });
+
+        map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+        map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-right');
+
+        map.on('load', () => {
+            map.addSource('selection-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addLayer({ id: 'selection-highlight', type: 'line', source: 'selection-source', paint: { 'line-color': '#0000FF', 'line-width': 3, 'line-opacity': 1 } });
+            map.addLayer({ id: 'selection-fill', type: 'fill', source: 'selection-source', paint: { 'fill-color': '#ffd600', 'fill-opacity': 0.25 } });
+            map.addSource('measure-source', { type: 'geojson', data: measureGeoJSON });
+            map.addLayer({ id: 'measure-line', type: 'line', source: 'measure-source', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#f50057', 'line-width': 3.5 } });
+            map.addLayer({ id: 'measure-points', type: 'circle', source: 'measure-source', paint: { 'circle-radius': 6, 'circle-color': '#f50057', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' } });
+            document.getElementById('loadingOverlay').style.display = 'none';
+        });
+
+        map.on('click', (e) => {
+            if (measurementMode) {
+                measurePoints.push([e.lngLat.lng, e.lngLat.lat]);
+                updateMeasureLayers();
+                return;
+            }
+            if (selectMode) {
+                handleSelectionClick(e);
+                return;
+            }
+            handleMapClick(e);
+        });
+
+        map.on('mousemove', (e) => {
+            const lat = e.lngLat.lat;
+            const lng = e.lngLat.lng;
+            const z = map.getZoom().toFixed(0);
+            document.getElementById('coordDisplay').innerHTML = `${(-lat).toFixed(4)}&deg; S, ${lng.toFixed(4)}&deg; E | Zoom: ${z}`;
+        });
+
+        map.on('move', updateCoordDisplay);
+    }
+
+    function updateCoordDisplay() {
+        const c = map.getCenter();
+        const z = map.getZoom().toFixed(0);
+        document.getElementById('coordDisplay').innerHTML = `${(-c.lat).toFixed(4)}&deg; S, ${c.lng.toFixed(4)}&deg; E | Zoom: ${z}`;
+    }
+
+    // ============================================
+    // RENDER LAYERS SIDEBAR
+    // ============================================
+    function renderLayerGroups() {
+        const container = document.getElementById('layerGroups');
+        container.innerHTML = '';
+        layerConfig.forEach((group) => {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = `layer-group ${group.expanded ? 'expanded' : ''}`;
+            const header = document.createElement('div');
+            header.className = 'layer-group-header';
+            header.innerHTML = `<span class="group-icon">${group.icon}</span><span class="group-name">${group.group}</span><span class="expand-icon">▼</span>`;
+            header.onclick = () => groupDiv.classList.toggle('expanded');
+            const itemsDiv = document.createElement('div');
+            itemsDiv.className = 'layer-group-items';
+            group.layers.forEach(layer => {
+                const item = document.createElement('div');
+                item.className = 'layer-item';
+                item.innerHTML = `<input type="checkbox" id="chk_${layer.id}" onchange="toggleLayer('${layer.id}')"><span class="layer-name">${layer.name}</span><span class="layer-weight">${layer.weight}</span>`;
+                itemsDiv.appendChild(item);
+            });
+            groupDiv.appendChild(header);
+            groupDiv.appendChild(itemsDiv);
+            container.appendChild(groupDiv);
+        });
+    }
+
+    // ============================================
+    // MANAGE LAYER INTERACTION
+    // ============================================
+    async function toggleLayer(layerId) {
+        const checkbox = document.getElementById(`chk_${layerId}`);
+        if (!checkbox) return;
+        if (checkbox.checked) { await addLayerToMap(layerId); }
+        else { activeLayers.delete(layerId); removeLayerFromMap(layerId); }
+        updateLegend();
+        // Auto show/hide legend panel based on active layers
+        toggleLegendForce(activeLayers.size > 0);
+    }
+
+    async function addLayerToMap(layerId) {
+        let layerInfo;
+        for (const group of layerConfig) {
+            const found = group.layers.find(l => l.id === layerId);
+            if (found) { layerInfo = found; break; }
+        }
+        if (!layerInfo) return;
+
+        const sourceId = `source_${layerId}`;
+        const fillId = `fill_${layerId}`;
+        const borderId = `border_${layerId}`;
+
+        if (map.getSource(sourceId)) {
+            if (map.getLayer(fillId)) map.setLayoutProperty(fillId, 'visibility', 'visible');
+            if (map.getLayer(borderId)) map.setLayoutProperty(borderId, 'visibility', 'visible');
+            activeLayers.set(layerId, map.getSource(sourceId)._data);
+            return;
+        }
+
+        try {
+            const response = await fetch(layerInfo.file);
+            const geojson = await response.json();
+            activeLayers.set(layerId, geojson);
+            map.addSource(sourceId, { type: 'geojson', data: geojson });
+            map.addLayer({ id: fillId, type: 'fill', source: sourceId, paint: { 'fill-color': ['match', ['get', 'kelas_numeric'], 1, classColors[1], 2, classColors[2], 3, classColors[3], 4, classColors[4], 5, classColors[5], '#a0aec0'], 'fill-opacity': 0.6 }, filter: ['==', ['geometry-type'], 'Polygon'] });
+            map.addLayer({ id: borderId, type: 'line', source: sourceId, paint: { 'line-color': ['match', ['get', 'kelas_numeric'], 1, classColors[1], 2, classColors[2], 3, classColors[3], 4, classColors[4], 5, classColors[5], '#4a5568'], 'line-width': ['match', ['geometry-type'], 'LineString', 2.5, 0.4] } });
+            map.on('mouseenter', fillId, () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', fillId, () => { map.getCanvas().style.cursor = ''; });
+        } catch (err) {
+            console.error('Gagal memuat GeoJSON:', layerInfo.file, err);
+            const checkbox = document.getElementById(`chk_${layerId}`);
+            if (checkbox) checkbox.checked = false;
+        }
+    }
+
+    function removeLayerFromMap(layerId) {
+        const fillId = `fill_${layerId}`;
+        const borderId = `border_${layerId}`;
+        if (map.getLayer(fillId)) map.setLayoutProperty(fillId, 'visibility', 'none');
+        if (map.getLayer(borderId)) map.setLayoutProperty(borderId, 'visibility', 'none');
+    }
+
+    function handleMapClick(e) {
+        const features = [];
+        const seenLayerIds = new Set();
+
+        for (const [layerId] of activeLayers.entries()) {
+            const fillId = `fill_${layerId}`;
+            const borderId = `border_${layerId}`;
+
+            if (!map.getLayer(fillId)) continue;
+            if (map.getLayoutProperty(fillId, 'visibility') === 'none') continue;
+
+            const fillFeatures = map.queryRenderedFeatures(e.point, { layers: [fillId] });
+            if (fillFeatures.length > 0 && !seenLayerIds.has(layerId)) {
+                seenLayerIds.add(layerId);
+                features.push({ layerId, feature: fillFeatures[0] });
+                continue;
+            }
+
+            if (map.getLayer(borderId) && map.getLayoutProperty(borderId, 'visibility') !== 'none') {
+                const borderFeatures = map.queryRenderedFeatures(e.point, { layers: [borderId] });
+                if (borderFeatures.length > 0 && !seenLayerIds.has(layerId)) {
+                    seenLayerIds.add(layerId);
+                    features.push({ layerId, feature: borderFeatures[0] });
+                }
+            }
+        }
+
+        if (features.length === 0) return;
+        showCombinedPopup(e, features);
+    }
+
+    function showCombinedPopup(e, features) {
+        const keysToSkip = ['fid', 'id', 'id_0', 'objectid', 'geom', 'geometry'];
+        let html = '';
+
+        features.forEach(({ layerId, feature }) => {
+            let layerInfo;
+            for (const group of layerConfig) {
+                const found = group.layers.find(l => l.id === layerId);
+                if (found) { layerInfo = found; break; }
+            }
+            const title = layerInfo ? layerInfo.name : layerId.toUpperCase();
+            const props = feature.properties;
+
+            html += `<div class="popup-section"><div class="popup-title">${title}</div><div class="popup-rows">`;
+            let count = 0;
+            Object.keys(props).forEach(key => {
+                if (keysToSkip.includes(key.toLowerCase()) || props[key] === null || props[key] === '') return;
+                html += `<div class="popup-row"><span class="popup-label">${key.toUpperCase()}</span><span class="popup-value">${props[key]}</span></div>`;
+                count++;
+            });
+            if (count === 0) html += `<div class="popup-row"><span class="popup-label">Info</span><span class="popup-value">-</span></div>`;
+            html += `</div></div>`;
+        });
+
+        new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '290px' })
+            .setLngLat(e.lngLat)
+            .setHTML(`<div class="popup-body">${html}</div>`)
+            .addTo(map);
+    }
+
+    // ============================================
+    // SELECTION TOOL
+    // ============================================
+    function toggleSelectMode() {
+        const btn = document.getElementById('btnSelect');
+        if (measurementMode) toggleMeasureTool();
+        selectMode = !selectMode;
+        if (selectMode) {
+            btn.classList.add('active');
+            map.getCanvas().style.cursor = 'crosshair';
+            toggleSidebarLeftForce(false);
+            toggleLegendForce(false);
+        } else {
+            btn.classList.remove('active');
+            clearSelection();
+            map.getCanvas().style.cursor = '';
+        }
+    }
+
+    function handleSelectionClick(e) {
+        // Single selection: replace previous
+        clearSelection();
+
+        for (const [layerId] of activeLayers.entries()) {
+            const fillId = `fill_${layerId}`;
+            const borderId = `border_${layerId}`;
+            if (!map.getLayer(fillId)) continue;
+            if (map.getLayoutProperty(fillId, 'visibility') === 'none') continue;
+
+            const fillFeatures = map.queryRenderedFeatures(e.point, { layers: [fillId] });
+            if (fillFeatures.length > 0) {
+                const f = fillFeatures[0];
+                let layerInfo;
+                for (const group of layerConfig) { const found = group.layers.find(l => l.id === layerId); if (found) { layerInfo = found; break; } }
+                selectedFeatures.push({ layerId, feature: f, name: layerInfo ? layerInfo.name : layerId });
+                highlightSelection();
+                return;
+            }
+
+            if (map.getLayer(borderId) && map.getLayoutProperty(borderId, 'visibility') !== 'none') {
+                const borderFeatures = map.queryRenderedFeatures(e.point, { layers: [borderId] });
+                if (borderFeatures.length > 0) {
+                    const f = borderFeatures[0];
+                    let layerInfo;
+                    for (const group of layerConfig) { const found = group.layers.find(l => l.id === layerId); if (found) { layerInfo = found; break; } }
+                    selectedFeatures.push({ layerId, feature: f, name: layerInfo ? layerInfo.name : layerId });
+                    highlightSelection();
+                    return;
+                }
+            }
+        }
+    }
+
+    function highlightSelection() {
+        if (!map.getSource('selection-source')) return;
+        const geojsonFeatures = selectedFeatures.map(s => {
+            const f = JSON.parse(JSON.stringify(s.feature));
+            f.properties = f.properties || {};
+            f.properties._selectionLayer = s.layerId;
+            f.properties._selectionName = s.name;
+            return f;
+        });
+        map.getSource('selection-source').setData({
+            type: 'FeatureCollection',
+            features: geojsonFeatures
+        });
+    }
+
+    function clearSelection() {
+        selectedFeatures = [];
+        if (map && map.getSource('selection-source')) {
+            map.getSource('selection-source').setData({ type: 'FeatureCollection', features: [] });
+        }
+    }
+
+    // ============================================
+    // LEGEND
+    // ============================================
+    function updateLegend() {
+        const container = document.getElementById('legendItems');
+        if (activeLayers.size === 0) { container.innerHTML = '<p class="text-xs text-gray-500 italic">Aktifkan layer untuk menampilkan legenda.</p>'; return; }
+        let html = '';
+        for (const [layerId, geojson] of activeLayers.entries()) {
+            let layerInfo;
+            for (const group of layerConfig) { const found = group.layers.find(l => l.id === layerId); if (found) { layerInfo = found; break; } }
+            if (!layerInfo) continue;
+            html += `<div class="legend-title">${layerInfo.name}</div>`;
+            html += `<div class="legend-subtitle">Klasifikasi Kelas</div><div class="legend-list">`;
+            const mapClassToLabel = {};
+            geojson.features.forEach(feat => {
+                const num = feat.properties.kelas_numeric;
+                const text = feat.properties.kategori || feat.properties.kelas || feat.properties.keterangan || feat.properties.slope || feat.properties.pl22_kws;
+                if (num !== undefined && text !== undefined) mapClassToLabel[num] = text;
+            });
+            let rendered = 0;
+            for (let i = 1; i <= 5; i++) {
+                if (mapClassToLabel[i]) {
+                    html += `<div class="legend-item"><div class="legend-color" style="background:${classColors[i]}"></div><span>${mapClassToLabel[i]}</span></div>`;
+                    rendered++;
+                }
+            }
+            if (rendered === 0) for (let i = 1; i <= 5; i++) html += `<div class="legend-item"><div class="legend-color" style="background:${classColors[i]}"></div><span>Kelas ${i}</span></div>`;
+            html += `</div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    // ============================================
+    // BASEMAP SWITCHER
+    // ============================================
+    function toggleBasemapSelector() {
+        const modal = document.getElementById('basemapModal');
+        const btn = document.getElementById('btnBasemap');
+        if (modal.classList.contains('show')) {
+            modal.classList.remove('show');
+            setTimeout(() => { modal.style.display = 'none'; }, 200);
+            btn.classList.remove('active');
+        } else {
+            modal.style.display = 'flex';
+            setTimeout(() => { modal.classList.add('show'); }, 10);
+            btn.classList.add('active');
+        }
+    }
+
+    function switchBasemap(styleKey, element) {
+        document.querySelectorAll('.basemap-card').forEach(card => card.classList.remove('active'));
+        element.classList.add('active');
+
+        const styles = {
+            'osm': ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            'satellite': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            'light': ['https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'],
+            'dark': ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png']
+        };
+        const attribution = styleKey === 'satellite' ? 'Esri, Maxar, Earthstar Geographics' : '&copy; OpenStreetMap';
+
+        if (map.getSource('osm')) {
+            map.removeLayer('osm-layer');
+            map.removeSource('osm');
+            map.addSource('osm', { type: 'raster', tiles: styles[styleKey], tileSize: 256, attribution: attribution });
+            map.addLayer({ id: 'osm-layer', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 19 }, map.getStyle().layers[0].id);
+        }
+        toggleBasemapSelector();
+    }
+
+    // ============================================
+    // SIDEBAR TOGGLES
+    // ============================================
+    function toggleSidebarLeft() {
+        const sidebar = document.getElementById('sidebarLeft');
+        const btn = document.getElementById('btnLayers');
+        const toggleBtn = document.getElementById('toggleSidebarBtn');
+        const icon = toggleBtn.querySelector('i');
+
+        sidebar.classList.toggle('collapsed');
+        const isCollapsed = sidebar.classList.contains('collapsed');
+
+        if (isCollapsed) {
+            btn.classList.remove('active');
+            toggleBtn.style.left = '8px';
+            icon.className = 'fas fa-chevron-right text-gray-500 text-xs';
+        } else {
+            btn.classList.add('active');
+            toggleBtn.style.left = '302px';
+            icon.className = 'fas fa-chevron-left text-gray-500 text-xs';
+        }
+    }
+
+    function toggleSidebarLeftForce(show) {
+        const sidebar = document.getElementById('sidebarLeft');
+        const btn = document.getElementById('btnLayers');
+        const toggleBtn = document.getElementById('toggleSidebarBtn');
+        const icon = toggleBtn.querySelector('i');
+
+        if (show) {
+            sidebar.classList.remove('collapsed');
+            btn.classList.add('active');
+            toggleBtn.style.left = '302px';
+            icon.className = 'fas fa-chevron-left text-gray-500 text-xs';
+        } else {
+            sidebar.classList.add('collapsed');
+            btn.classList.remove('active');
+            toggleBtn.style.left = '8px';
+            icon.className = 'fas fa-chevron-right text-gray-500 text-xs';
+        }
+    }
+
+    function toggleLegend() {
+        const legend = document.getElementById('legendPanel');
+        const btn = document.getElementById('btnLegend');
+        const toggleBtn = document.getElementById('toggleLegendBtn');
+        const icon = toggleBtn.querySelector('i');
+
+        legend.classList.toggle('collapsed');
+        const isCollapsed = legend.classList.contains('collapsed');
+
+        if (isCollapsed) {
+            btn.classList.remove('active');
+            toggleBtn.style.right = '8px';
+            icon.className = 'fas fa-chevron-left text-gray-500 text-xs';
+        } else {
+            btn.classList.add('active');
+            toggleBtn.style.right = '312px';
+            icon.className = 'fas fa-chevron-right text-gray-500 text-xs';
+        }
+    }
+
+    function toggleLegendForce(show) {
+        const legend = document.getElementById('legendPanel');
+        const btn = document.getElementById('btnLegend');
+        const toggleBtn = document.getElementById('toggleLegendBtn');
+        const icon = toggleBtn.querySelector('i');
+
+        if (show) {
+            legend.classList.remove('collapsed');
+            btn.classList.add('active');
+            toggleBtn.style.right = '312px';
+            icon.className = 'fas fa-chevron-right text-gray-500 text-xs';
+        } else {
+            legend.classList.add('collapsed');
+            btn.classList.remove('active');
+            toggleBtn.style.right = '8px';
+            icon.className = 'fas fa-chevron-left text-gray-500 text-xs';
+        }
+    }
+
+    // ============================================
+    // FIT TO LUWU
+    // ============================================
+    function fitToBounds() {
+        map.flyTo({ center: [120.2211, -3.1683], zoom: 8.5, essential: true });
+    }
+
+    // ============================================
+    // ABOUT MODAL
+    // ============================================
+    function showAbout() {
+        document.getElementById('aboutModal').style.display = 'flex';
+        document.getElementById('btnInfo').classList.add('active');
+    }
+    function closeAbout() {
+        document.getElementById('aboutModal').style.display = 'none';
+        document.getElementById('btnInfo').classList.remove('active');
+    }
+
+    // ============================================
+    // MEASURE TOOL
+    // ============================================
+    function toggleMeasureTool() {
+        const btn = document.getElementById('btnMeasure');
+        const tooltip = document.getElementById('measureTooltip');
+        if (measurementMode) {
+            measurementMode = false;
+            btn.classList.remove('active');
+            tooltip.classList.remove('show');
+            map.getCanvas().style.cursor = '';
+            measurePoints = [];
+            updateMeasureLayers();
+        } else {
+            if (selectMode) toggleSelectMode();
+            measurementMode = true;
+            btn.classList.add('active');
+            tooltip.classList.add('show');
+            tooltip.innerText = 'Klik pada peta untuk mulai mengukur jarak...';
+            map.getCanvas().style.cursor = 'crosshair';
+            toggleSidebarLeftForce(false);
+            toggleLegendForce(false);
+        }
+    }
+
+    function updateMeasureLayers() {
+        const tooltip = document.getElementById('measureTooltip');
+        if (measurePoints.length === 0) { measureGeoJSON.features = []; }
+        else if (measurePoints.length === 1) {
+            measureGeoJSON.features = [{ type: 'Feature', geometry: { type: 'Point', coordinates: measurePoints[0] } }];
+            tooltip.innerText = 'Klik titik kedua untuk mengukur jarak...';
+        } else {
+            const line = turf.lineString(measurePoints);
+            const lengthKm = turf.length(line, { units: 'kilometers' });
+            measureGeoJSON.features = [{ type: 'Feature', geometry: { type: 'LineString', coordinates: measurePoints } }, ...measurePoints.map(p => ({ type: 'Feature', geometry: { type: 'Point', coordinates: p } }))];
+            tooltip.innerText = `Jarak Total: ${lengthKm.toFixed(2)} km (${measurePoints.length} titik)`;
+        }
+        if (map.getSource('measure-source')) map.getSource('measure-source').setData(measureGeoJSON);
+    }
+
+    // ============================================
+    // FULLSCREEN
+    // ============================================
+    function toggleFullscreen() {
+        const btn = document.getElementById('btnFullscreen');
+        if (!document.fullscreenElement) { document.documentElement.requestFullscreen().then(() => btn.classList.add('active')); }
+        else { document.exitFullscreen().then(() => btn.classList.remove('active')); }
+    }
+
+    // ============================================
+    // SEARCH (NOMINATIM)
+    // ============================================
+    async function searchLocation() {
+        const input = document.getElementById('searchInput');
+        const query = input.value.trim();
+        if (!query) return;
+        const btn = document.getElementById('searchBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin text-sm"></i>';
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=119.5,-3.8,121.0,-2.3&bounded=1`;
+            const response = await fetch(url, { headers: { 'Accept-Language': 'id,en' } });
+            const results = await response.json();
+            if (results && results.length > 0) {
+                const m = results[0];
+                map.flyTo({ center: [parseFloat(m.lon), parseFloat(m.lat)], zoom: 12, essential: true });
+                new maplibregl.Popup({ closeOnClick: true })
+                    .setLngLat([parseFloat(m.lon), parseFloat(m.lat)])
+                    .setHTML(`<div class="popup-section"><div class="popup-title">${m.display_name.split(',')[0]}</div><div class="popup-rows"><div class="popup-row"><span class="popup-label">Alamat</span><span class="popup-value">${m.display_name}</span></div><div class="popup-row"><span class="popup-label">Lon</span><span class="popup-value">${parseFloat(m.lon).toFixed(5)}</span></div><div class="popup-row"><span class="popup-label">Lat</span><span class="popup-value">${parseFloat(m.lat).toFixed(5)}</span></div></div></div>`)
+                    .addTo(map);
+            } else { alert(`Lokasi "${query}" tidak ditemukan di area Kabupaten Luwu.`); }
+        } catch (err) { console.error(err); alert('Gagal menghubungi server pencari lokasi.'); }
+        finally { btn.innerHTML = orig; }
+    }
+    document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchLocation(); });
+
+    // ============================================
+    // DOWNLOAD ACTIVE GEOJSON
+    // ============================================
+    function downloadActiveLayers() {
+        if (activeLayers.size === 0) { alert('Tidak ada layer aktif.'); return; }
+        const bundle = { type: 'FeatureCollection', features: [] };
+        for (const [layerId, geojson] of activeLayers.entries()) {
+            geojson.features.forEach(feat => {
+                const cloned = JSON.parse(JSON.stringify(feat));
+                cloned.properties._layerId = layerId;
+                bundle.features.push(cloned);
+            });
+        }
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bundle));
+        const a = document.createElement('a');
+        a.setAttribute("href", dataStr);
+        a.setAttribute("download", "WebGIS_Zonasi_Luwu_ActiveLayers.geojson");
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
+    // Mobile menu toggle
+    document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+        document.getElementById('mobileMenu').classList.toggle('hidden');
+    });
+    </script>
+</body>
+</html>

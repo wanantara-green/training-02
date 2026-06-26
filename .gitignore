@@ -1,1 +1,5 @@
 .claude
+
+# Environment variables (berisi konfigurasi server rahasia)
+.env
+

@@ -586,6 +586,7 @@
         </div>
     </div>
 
+    <script src="js/config.js"></script>
     <script>
     // ============================================
     // LAYER CONFIGURATION
@@ -673,8 +674,8 @@
         5: "#2979ff"
     };
 
-    // GeoServer WFS endpoint (browser-reachable address)
-    const GEOSERVER_URL = 'http://localhost:9597/geoserver';
+    // GeoServer WFS endpoint (dari config.js — edit js/config.js atau .env)
+    const GEOSERVER_URL = APP_CONFIG.GEOSERVER_URL;
 
     let map;
     let activeLayers = new Map();
@@ -837,7 +838,7 @@
         try {
             // Fetch from GeoServer WFS instead of local file
             const typeName = layerInfo.file.replace('geojson/', '').replace('.geojson', '');
-            const wfsUrl = `${GEOSERVER_URL}/zonasiluwu/ows?service=WFS&version=1.1.0&request=GetFeature&typeName=zonasiluwu:${typeName}&outputFormat=application/json`;
+            const wfsUrl = `${GEOSERVER_URL}/${APP_CONFIG.GEOSERVER_WORKSPACE}/ows?service=WFS&version=1.1.0&request=GetFeature&typeName=${APP_CONFIG.GEOSERVER_WORKSPACE}:${typeName}&outputFormat=application/json`;
             const response = await fetch(wfsUrl);
             const geojson = await response.json();
             activeLayers.set(layerId, geojson);
@@ -1226,7 +1227,7 @@
         const orig = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin text-sm"></i>';
         try {
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=119.5,-3.8,121.0,-2.3&bounded=1`;
+            const url = `${APP_CONFIG.NOMINATIM_URL}?format=json&q=${encodeURIComponent(query)}&viewbox=119.5,-3.8,121.0,-2.3&bounded=1`;
             const response = await fetch(url, { headers: { 'Accept-Language': 'id,en' } });
             const results = await response.json();
             if (results && results.length > 0) {

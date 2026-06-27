@@ -6,7 +6,7 @@
 
 const APP_CONFIG = {
     // GeoServer WFS Endpoint via Traefik HTTPS
-    GEOSERVER_URL: 'http://103.197.188.59:9597/geoserver',
+    GEOSERVER_URL: 'https://geoserver.app.wanantara.org/geoserver',
 
     // GeoServer MCP SSE Endpoint (AI assistant) 
     MCP_URL: 'https://geoserver-mcp.app.wanantara.org/sse',

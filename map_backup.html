@@ -507,29 +507,6 @@
             Jarak: 0.00 km
         </div>
 
-        <!-- AI Assistant Chat Panel -->
-        <div id="mcpChatPanel" class="absolute top-4 right-4 z-[1001] w-[350px] bg-white rounded-xl shadow-2xl flex-col overflow-hidden" style="display:none; max-height: calc(100vh - 240px);">
-            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-2 flex items-center justify-between flex-shrink-0">
-                <h5 class="font-semibold text-sm flex items-center gap-2">
-                    <i class="fas fa-robot"></i> AI Assistant GIS
-                </h5>
-                <button onclick="toggleMCPChat()" class="text-white/80 hover:text-white transition">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="mcpMessages" class="flex-grow overflow-y-auto p-3 space-y-1" style="min-height: 200px;">
-                <div class="text-center text-xs text-gray-400 italic py-4">Tanya tentang data spasial, analisis zona, atau query layer peta.</div>
-            </div>
-            <div class="border-t border-gray-200 p-3 flex gap-2">
-                <input type="text" id="mcpInput" placeholder="Tanya tentang data GIS..." 
-                       class="flex-grow px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
-                       onkeypress="if(event.key==='Enter')handleMCPSubmit()">
-                <button onclick="handleMCPSubmit()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            </div>
-        </div>
-
         <!-- Dock Container (3D) -->
         <div class="dock-container-3d">
             <div class="dock-shelf"></div>
@@ -594,12 +571,6 @@
                         <span class="dock-tooltip">Download GeoJSON</span>
                     </button>
                 </li>
-                <li>
-                    <button class="map-tool-btn" data-tool="mcp" id="btnMCP" onclick="toggleMCPChat()">
-                        <span class="dock-icon" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);"><i class="fas fa-robot"></i></span>
-                        <span class="dock-tooltip">AI Assistant</span>
-                    </button>
-                </li>
             </ul>
         </div>
     </div>
@@ -615,7 +586,6 @@
         </div>
     </div>
 
-    <script src="js/config.js"></script>
     <script>
     // ============================================
     // LAYER CONFIGURATION
@@ -702,9 +672,6 @@
         4: "#4caf50",
         5: "#2979ff"
     };
-
-    // GeoServer WFS endpoint (dari config.js — edit js/config.js atau .env)
-    const GEOSERVER_URL = APP_CONFIG.GEOSERVER_URL;
 
     let map;
     let activeLayers = new Map();
@@ -865,10 +832,7 @@
         }
 
         try {
-            // Fetch from GeoServer WFS instead of local file
-            const typeName = layerInfo.file.replace('geojson/', '').replace('.geojson', '').toLowerCase();
-            const wfsUrl = `${GEOSERVER_URL}/${APP_CONFIG.GEOSERVER_WORKSPACE}/ows?service=WFS&version=1.1.0&request=GetFeature&typeName=${APP_CONFIG.GEOSERVER_WORKSPACE}:${typeName}&outputFormat=application/json`;
-            const response = await fetch(wfsUrl);
+            const response = await fetch(layerInfo.file);
             const geojson = await response.json();
             activeLayers.set(layerId, geojson);
             map.addSource(sourceId, { type: 'geojson', data: geojson });
@@ -1256,7 +1220,7 @@
         const orig = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin text-sm"></i>';
         try {
-            const url = `${APP_CONFIG.NOMINATIM_URL}?format=json&q=${encodeURIComponent(query)}&viewbox=119.5,-3.8,121.0,-2.3&bounded=1`;
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=119.5,-3.8,121.0,-2.3&bounded=1`;
             const response = await fetch(url, { headers: { 'Accept-Language': 'id,en' } });
             const results = await response.json();
             if (results && results.length > 0) {
@@ -1292,65 +1256,6 @@
         document.body.appendChild(a);
         a.click();
         a.remove();
-    }
-
-    // ============================================
-    // GeoServer MCP AI Assistant
-    // ============================================
-    let mcpChatOpen = false;
-    let mcpMessages = [];
-
-    async function sendToMCP(userMessage) {
-        try {
-            const response = await fetch(APP_CONFIG.MCP_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [
-                        { role: 'system', content: 'Kamu adalah asisten GIS untuk WebGIS Rencana Zonasi Kabupaten Luwu. Bantu user menganalisis data spasial dari GeoServer. Jawab dalam Bahasa Indonesia.' },
-                        { role: 'user', content: userMessage }
-                    ]
-                })
-            });
-            const data = await response.json();
-            const reply = data.choices?.[0]?.message?.content || 'Maaf, tidak ada respons.';
-            return reply;
-        } catch (err) {
-            return 'Gagal menghubungi AI Assistant. Pastikan GeoServer MCP berjalan.';
-        }
-    }
-
-    function toggleMCPChat() {
-        const panel = document.getElementById('mcpChatPanel');
-        const btn = document.getElementById('btnMCP');
-        mcpChatOpen = !mcpChatOpen;
-        if (mcpChatOpen) {
-            panel.style.display = 'flex';
-            btn.classList.add('active');
-            toggleSidebarLeftForce(false);
-            toggleLegendForce(false);
-        } else {
-            panel.style.display = 'none';
-            btn.classList.remove('active');
-        }
-    }
-
-    function handleMCPSubmit() {
-        const input = document.getElementById('mcpInput');
-        const msg = input.value.trim();
-        if (!msg) return;
-        input.value = '';
-        addMCPMessage('user', msg);
-        sendToMCP(msg).then(reply => addMCPMessage('assistant', reply));
-    }
-
-    function addMCPMessage(role, text) {
-        const container = document.getElementById('mcpMessages');
-        const div = document.createElement('div');
-        div.className = role === 'user' ? 'text-right mb-2' : 'text-left mb-2';
-        div.innerHTML = `<span class="inline-block px-3 py-2 rounded-xl text-sm max-w-[85%] ${role === 'user' ? 'bg-green-700 text-white' : 'bg-gray-100 text-gray-800'}">${text}</span>`;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
     }
 
     // Mobile menu toggle

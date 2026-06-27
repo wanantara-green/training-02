@@ -866,7 +866,7 @@
 
         try {
             // Fetch from GeoServer WFS instead of local file
-            const typeName = layerInfo.file.replace('geojson/', '').replace('.geojson', '');
+            const typeName = layerInfo.file.replace('geojson/', '').replace('.geojson', '').toLowerCase();
             const wfsUrl = `${GEOSERVER_URL}/${APP_CONFIG.GEOSERVER_WORKSPACE}/ows?service=WFS&version=1.1.0&request=GetFeature&typeName=${APP_CONFIG.GEOSERVER_WORKSPACE}:${typeName}&outputFormat=application/json`;
             const response = await fetch(wfsUrl);
             const geojson = await response.json();

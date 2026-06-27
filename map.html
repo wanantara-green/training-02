@@ -1300,20 +1300,53 @@
     let mcpChatOpen = false;
     let mcpMessages = [];
 
+    let mcpSessionId = null;
+
+    async function ensureMCPSession() {
+        if (mcpSessionId) return mcpSessionId;
+        const sseUrl = APP_CONFIG.MCP_URL;
+        const response = await fetch(sseUrl, { method: 'GET', headers: { 'Accept': 'text/event-stream' } });
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const match = buffer.match(/session_id=([a-f0-9-]+)/);
+            if (match) {
+                mcpSessionId = match[1];
+                reader.cancel();
+                return mcpSessionId;
+            }
+        }
+        throw new Error('No session_id');
+    }
+
     async function sendToMCP(userMessage) {
         try {
-            const response = await fetch(APP_CONFIG.MCP_URL, {
+            const sid = await ensureMCPSession();
+            const msgUrl = APP_CONFIG.MCP_URL.replace('/sse', '/messages/') + '?session_id=' + sid;
+            const response = await fetch(msgUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [
-                        { role: 'system', content: 'Kamu adalah asisten GIS untuk WebGIS Rencana Zonasi Kabupaten Luwu. Bantu user menganalisis data spasial dari GeoServer. Jawab dalam Bahasa Indonesia.' },
-                        { role: 'user', content: userMessage }
-                    ]
+                    jsonrpc: '2.0',
+                    method: 'tools/call',
+                    params: {
+                        name: 'chat',
+                        arguments: {
+                            messages: [
+                                { role: 'system', content: 'Kamu adalah asisten GIS untuk WebGIS Rencana Zonasi Kabupaten Luwu. Bantu user menganalisis data spasial dari GeoServer. Jawab dalam Bahasa Indonesia.' },
+                                { role: 'user', content: userMessage }
+                            ]
+                        }
+                    },
+                    id: Date.now()
                 })
             });
             const data = await response.json();
-            const reply = data.choices?.[0]?.message?.content || 'Maaf, tidak ada respons.';
+            const reply = data.result?.content?.[0]?.text || 'Maaf, tidak ada respons.';
             return reply;
         } catch (err) {
             return 'Gagal menghubungi AI Assistant. Pastikan GeoServer MCP berjalan.';

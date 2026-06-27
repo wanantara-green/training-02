@@ -2,23 +2,18 @@
  * ============================================
  * APP CONFIG - WebGIS Zonasi Kab. Luwu
  * ============================================
- * File ini dibaca oleh peta.html untuk
- * mengambil konfigurasi lingkungan.
- *
- * Untuk mengubah nilai, edit file .env
- * lalu jalankan:  (tidak ada build step untuk static HTML)
- * Cukup ubah langsung nilai di bawah ini,
- * atau gunakan file .env sebagai referensi.
- * ============================================
  */
 
 const APP_CONFIG = {
-    // GeoServer WFS Endpoint (tanpa slash di akhir)
-    GEOSERVER_URL: 'http://localhost:9597/geoserver',
+    // GeoServer WFS Endpoint (deploy via Coolify gs-mcp)
+    GEOSERVER_URL: 'http://pbourtfzc4lqcfrh6wzcypnu.103.197.188.59.sslip.io/geoserver',
+
+    // GeoServer MCP SSE Endpoint (AI assistant)
+    MCP_URL: 'http://w7mm8u2fkmoj14dajseb7up5.103.197.188.59.sslip.io/sse',
 
     // Nama workspace GeoServer
     GEOSERVER_WORKSPACE: 'zonasiluwu',
 
-    // Nominatim Search API (opsional)
+    // Nominatim Search API
     NOMINATIM_URL: 'https://nominatim.openstreetmap.org/search',
 };

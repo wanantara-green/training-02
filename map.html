@@ -1347,16 +1347,44 @@
             .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
             .replace(/`([^`]+)`/g, '<code style="background:#e8e8e8;padding:0 4px;border-radius:3px">$1</code>')
             .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
-        let html = '', list = null;
+        const lines = escapeHtml(md).split('\n');
+        const isSep = (s) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(s || '');
+        const isRow = (s) => (s || '').indexOf('|') !== -1;
+        const cells = (s) => {
+            let t = s.trim();
+            if (t.startsWith('|')) t = t.slice(1);
+            if (t.endsWith('|')) t = t.slice(0, -1);
+            return t.split('|').map((c) => c.trim());
+        };
+        let html = '', list = null, i = 0;
         const closeList = () => { if (list) { html += '</' + list + '>'; list = null; } };
-        for (const raw of escapeHtml(md).split('\n')) {
-            const line = raw.trim();
-            if (!line) { closeList(); continue; }
+        while (i < lines.length) {
+            const line = lines[i].trim();
+            // ── Tabel: baris berisi '|' diikuti baris pemisah |---|---| ──
+            if (isRow(line) && isSep(lines[i + 1])) {
+                closeList();
+                const header = cells(line);
+                i += 2;
+                let t = '<table style="border-collapse:collapse;margin:6px 0;width:100%;font-size:12px"><thead><tr>';
+                for (const h of header) t += '<th style="border:1px solid #cbd5e1;padding:4px 6px;background:#f1f5f9;text-align:left">' + inline(h) + '</th>';
+                t += '</tr></thead><tbody>';
+                while (i < lines.length && lines[i].trim() && isRow(lines[i])) {
+                    const r = cells(lines[i]);
+                    t += '<tr>';
+                    for (let c = 0; c < header.length; c++) t += '<td style="border:1px solid #cbd5e1;padding:4px 6px">' + inline(r[c] || '') + '</td>';
+                    t += '</tr>';
+                    i++;
+                }
+                html += t + '</tbody></table>';
+                continue;
+            }
+            if (!line) { closeList(); i++; continue; }
             let m;
             if ((m = line.match(/^#{1,6}\s+(.*)$/))) { closeList(); html += '<div style="font-weight:700;margin:6px 0 2px">' + inline(m[1]) + '</div>'; }
             else if ((m = line.match(/^[-*]\s+(.*)$/))) { if (list !== 'ul') { closeList(); html += '<ul style="margin:4px 0;padding-left:18px;list-style:disc">'; list = 'ul'; } html += '<li>' + inline(m[1]) + '</li>'; }
             else if ((m = line.match(/^\d+\.\s+(.*)$/))) { if (list !== 'ol') { closeList(); html += '<ol style="margin:4px 0;padding-left:20px;list-style:decimal">'; list = 'ol'; } html += '<li>' + inline(m[1]) + '</li>'; }
             else { closeList(); html += '<div style="margin:2px 0">' + inline(line) + '</div>'; }
+            i++;
         }
         closeList();
         return html;

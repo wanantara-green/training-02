@@ -7,11 +7,11 @@ const completed = new Set();
 const quizUnlocked = new Set();
 const quizShuffled = {};
 let RESET_PIN = '1234';
-const PROGRESS_STORAGE_KEY = 'training-01-modul-progress';
-const QUIZ_UNLOCK_KEY = 'training-01-quiz-unlocked';
-const QUIZ_ANSWER_KEY = 'training-01-quiz-answers';
-const SHUFFLED_QUIZ_KEY = 'training-01-quiz-shuffled';
-const USER_KEY = 'training-01-user';
+const PROGRESS_STORAGE_KEY = 'training-modul-progress';
+const QUIZ_UNLOCK_KEY = 'training-quiz-unlocked';
+const QUIZ_ANSWER_KEY = 'training-quiz-answers';
+const SHUFFLED_QUIZ_KEY = 'training-quiz-shuffled';
+const USER_KEY = 'training-user';
 
 /* ---------- XML Loader ---------- */
 async function loadModulXML(){

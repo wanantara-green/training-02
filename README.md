@@ -1,6 +1,6 @@
 # Pelatihan Perencanaan Zonasi Spasial Kabupaten Luwu
 
-> Training online ini dipublikasikan di **[training-01.wanantara.org](https://training-01.wanantara.org)**
+> Training online ini dipublikasikan di **[training-02.wanantara.org](https://training-02.wanantara.org)**
 
 Website pelatihan penguatan kapasitas **Perencanaan Zonasi Spasial** untuk Kabupaten Luwu, Sulawesi Selatan.
 
@@ -23,7 +23,7 @@ Website pelatihan penguatan kapasitas **Perencanaan Zonasi Spasial** untuk Kabup
 
 ## Tech Stack
 
-HTML5, Tailwind CSS (CDN), MapLibre GL JS 3.6, Turf.js 6, Vanilla JavaScript. Static site — tanpa build step, tanpa backend. Hosting di GitHub Pages (`training-01.wanantara.org`).
+HTML5, Tailwind CSS (CDN), MapLibre GL JS 3.6, Turf.js 6, Vanilla JavaScript. Static site — tanpa build step, tanpa backend. Hosting di GitHub Pages (`training-02.wanantara.org`).
 
 ## PIN Kuis
 

@@ -1336,16 +1336,42 @@
         }
     }
 
+    // Escape HTML lalu render subset Markdown (heading, **bold**, *italic*,
+    // `code`, list - / 1.) jadi HTML rapi. Pakai inline style agar tampil benar
+    // walau Tailwind preflight me-reset heading/list.
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function renderMarkdown(md) {
+        const inline = (s) => s
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/`([^`]+)`/g, '<code style="background:#e8e8e8;padding:0 4px;border-radius:3px">$1</code>')
+            .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
+        let html = '', list = null;
+        const closeList = () => { if (list) { html += '</' + list + '>'; list = null; } };
+        for (const raw of escapeHtml(md).split('\n')) {
+            const line = raw.trim();
+            if (!line) { closeList(); continue; }
+            let m;
+            if ((m = line.match(/^#{1,6}\s+(.*)$/))) { closeList(); html += '<div style="font-weight:700;margin:6px 0 2px">' + inline(m[1]) + '</div>'; }
+            else if ((m = line.match(/^[-*]\s+(.*)$/))) { if (list !== 'ul') { closeList(); html += '<ul style="margin:4px 0;padding-left:18px;list-style:disc">'; list = 'ul'; } html += '<li>' + inline(m[1]) + '</li>'; }
+            else if ((m = line.match(/^\d+\.\s+(.*)$/))) { if (list !== 'ol') { closeList(); html += '<ol style="margin:4px 0;padding-left:20px;list-style:decimal">'; list = 'ol'; } html += '<li>' + inline(m[1]) + '</li>'; }
+            else { closeList(); html += '<div style="margin:2px 0">' + inline(line) + '</div>'; }
+        }
+        closeList();
+        return html;
+    }
+
     function handleMCPSubmit() {
         const input = document.getElementById('mcpInput');
         const msg = input.value.trim();
         if (!msg) return;
         input.value = '';
         input.disabled = true;
-        addMCPMessage('user', msg);
+        addMCPMessage('user', escapeHtml(msg));
         const thinking = addMCPMessage('assistant', '<i class="fas fa-circle-notch fa-spin"></i> sedang menganalisis…');
         sendToMCP(msg)
-            .then(reply => { thinking.querySelector('span').textContent = reply; })
+            .then(reply => { thinking.querySelector('span').innerHTML = renderMarkdown(reply); })
             .catch(() => { thinking.querySelector('span').textContent = 'Terjadi kesalahan.'; })
             .finally(() => {
                 input.disabled = false;

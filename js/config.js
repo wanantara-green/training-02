@@ -10,7 +10,10 @@ const APP_CONFIG = {
 
     // AI Assistant — gs-ai-bridge (DeepSeek + GeoServer read-only, key server-side).
     // Browser hanya POST {pertanyaan} ke sini; tidak ada kredensial di klien.
-    AI_BRIDGE_URL: 'https://gs-ai.app.wanantara.org/ask',
+    // Saat dibuka di localhost → pakai bridge lokal (port 8088). Selain itu → produksi.
+    AI_BRIDGE_URL: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
+        ? 'http://localhost:8088/ask'
+        : 'https://gs-ai.app.wanantara.org/ask',
 
     // Nama workspace GeoServer
     GEOSERVER_WORKSPACE: 'zonasiluwu',

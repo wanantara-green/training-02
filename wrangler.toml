@@ -1,0 +1,8 @@
+# ============================================
+# wrangler.toml — training-02
+# Static site frontend untuk Training Rencana Zonasi
+# Kabupaten Luwu, Sulawesi Selatan
+# ============================================
+name = "training-02"
+pages_build_output_dir = "."
+compatibility_date = "2026-06-29"

@@ -96,31 +96,51 @@
 							   class="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-green-800 font-medium px-6 py-3 rounded-lg border border-green-200 transition">
 								<i class="fas fa-map"></i> Lihat Peta Interaktif
 							</a>
+							<a href="mce-index.html" id="btnBobot"
+							   class="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-green-800 font-medium px-6 py-3 rounded-lg border border-green-200 transition">
+								<i class="fas fa-pen"></i> Lihat Pembobotan MCE
+							</a>
 						</div>
 					</div>
 
-					<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10 max-w-3xl">
-						<div class="bg-white/80 backdrop-blur rounded-2xl border border-gray-200 px-4 py-4">
-							<div class="text-2xl font-bold" style="color:var(--green-800)">6</div>
-							<div class="text-sm text-gray-500">Modul</div>
-						</div>
-						<div class="bg-white/80 backdrop-blur rounded-2xl border border-gray-200 px-4 py-4">
-							<div class="text-2xl font-bold" style="color:var(--green-800)">29</div>
-							<div class="text-sm text-gray-500">Indikator</div>
-						</div>
-						<div class="bg-white/80 backdrop-blur rounded-2xl border border-gray-200 px-4 py-4">
-							<div class="text-2xl font-bold" style="color:var(--green-800)">22</div>
-							<div class="text-sm text-gray-500">Kecamatan</div>
-						</div>
-						<div class="bg-white/80 backdrop-blur rounded-2xl border border-gray-200 px-4 py-4">
-							<div class="text-2xl font-bold" style="color:var(--green-800)">303</div>
-							<div class="text-sm text-gray-500">Ribu ha</div>
-						</div>
-					</div>
 				</div>
 			</div>
 		</section>
 	</main>
+
+	<section class="border-t border-gray-200 bg-green-700">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+			<div class="max-w-4xl">
+				<span class="text-xs font-semibold tracking-wide uppercase text-white/70">Motivasion</span>
+				<h3 id="welcomeTitle" class="text-2xl sm:text-3xl font-bold mt-2 text-white">Self Skill Improvement</h3>
+				<p class="prose-body text-white/80 mt-3 leading-relaxed">
+					Tingkatkan skill diri secara mandiri lewat modul, kuis, dan evaluasi sederhana.
+					Belajar, cek pengetahuan, wawasan dan pemahaman, lalu lihat perkembanganmu sendiri — cara praktis untuk
+					meningkatkan kemampuan dengan penilaian mandiri. Kami tidak merekam data nama, identitas, atau jawaban peserta. Semua bersifat anonim dan untuk kepentingan pembelajaran pribadi.
+				</p>
+
+					<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10 max-w-3xl">
+						<div class="bg-white/20 backdrop-blur rounded-2xl border border-white/20 px-4 py-4">
+							<div class="text-2xl font-bold text-white">6</div>
+							<div class="text-sm text-white/70">Modul Pelatihan</div>
+						</div>
+						<div class="bg-white/20 backdrop-blur rounded-2xl border border-white/20 px-4 py-4">
+							<div class="text-2xl font-bold text-white">16</div>
+							<div class="text-sm text-white/70">Indikator MCE</div>
+						</div>
+						<div class="bg-white/20 backdrop-blur rounded-2xl border border-white/20 px-4 py-4">
+							<div class="text-2xl font-bold text-white">22</div>
+							<div class="text-sm text-white/70">Kecamatan</div>
+						</div>
+						<div class="bg-white/20 backdrop-blur rounded-2xl border border-white/20 px-4 py-4">
+							<div class="text-2xl font-bold text-white">303</div>
+							<div class="text-sm text-white/70">Ribu ha</div>
+						</div>
+					</div>
+
+			</div>
+		</div>
+	</section>
 
 	<section id="alur-belajar" class="bg-white border-t border-gray-200">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -240,15 +260,15 @@
 					<div class="grid grid-cols-3 gap-3 mt-6">
 						<div class="rounded-xl bg-white border border-green-100 px-3 py-3 text-center">
 							<div class="text-lg font-bold text-green-800">6</div>
-							<div class="text-[11px] text-gray-500 uppercase tracking-wide">Modul</div>
-						</div>
-						<div class="rounded-xl bg-white border border-green-100 px-3 py-3 text-center">
-							<div class="text-lg font-bold text-green-800">29</div>
-							<div class="text-[11px] text-gray-500 uppercase tracking-wide">Indikator</div>
+							<div class="text-[11px] text-gray-500 uppercase tracking-wide">Modul<br> Training</div>
 						</div>
 						<div class="rounded-xl bg-white border border-green-100 px-3 py-3 text-center">
 							<div class="text-lg font-bold text-green-800">1</div>
-							<div class="text-[11px] text-gray-500 uppercase tracking-wide">Peta</div>
+							<div class="text-[11px] text-gray-500 uppercase tracking-wide">Peta<br> Interaktif</div>
+						</div>
+						<div class="rounded-xl bg-white border border-green-100 px-3 py-3 text-center">
+							<div class="text-lg font-bold text-green-800">1</div>
+							<div class="text-[11px] text-gray-500 uppercase tracking-wide">Kuisioner<br> Pembobotan</div>
 						</div>
 					</div>
 				</div>
@@ -346,6 +366,15 @@
 			if(btnPeta){
 				btnPeta.classList.add('opacity-40','pointer-events-none');
 				btnPeta.removeAttribute('href');
+			}
+		}
+
+		// Disable bobot button if not registered
+		if(!getUser()){
+			const btnBobot = document.getElementById('btnBobot');
+			if(btnBobot){
+				btnBobot.classList.add('opacity-40','pointer-events-none');
+				btnBobot.removeAttribute('href');
 			}
 		}
 

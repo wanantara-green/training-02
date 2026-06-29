@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Konsol Admin — Zonasi FOLUR Luwu</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,800;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = { theme: { extend: {
+      fontFamily: {
+        display: ["Fraunces", "serif"],
+        sans: ["Hanken Grotesk", "sans-serif"],
+        mono: ["JetBrains Mono", "monospace"],
+      },
+      colors: {
+        paper:  "#EFEDE3",
+        clay:   { DEFAULT:"#C96442", bright:"#D97757", deep:"#A8472A", soft:"#E8C7B6" },
+        ink:    { DEFAULT:"#22211D", soft:"#56544C", faint:"#8A887E" },
+        moss:   { DEFAULT:"#5C6B4A", soft:"#9AA67F" },
+      },
+    }}};
+  </script>
+  <style>
+    :root { --paper:#EFEDE3; --ink:#22211D; --clay:#C96442; }
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body {
+      background:
+        radial-gradient(120% 80% at 12% -8%, #F6F2E7 0%, rgba(246,242,231,0) 55%),
+        radial-gradient(110% 70% at 96% 0%, #EDE6D6 0%, rgba(237,230,214,0) 50%),
+        var(--paper);
+      background-attachment: fixed;
+    }
+    /* grain overlay */
+    body::before {
+      content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.04;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .ital { font-style: italic; }
+    /* entrance animation */
+    @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .rise { opacity:0; animation: rise .7s cubic-bezier(.2,.7,.2,1) forwards; }
+    /* status pulse */
+    @keyframes pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(201,100,66,.45);} 50%{ box-shadow:0 0 0 6px rgba(201,100,66,0);} }
+    .pulse { animation: pulse 2.2s ease-out infinite; }
+    @keyframes pulseGreen { 0%,100%{ box-shadow:0 0 0 0 rgba(92,107,74,.4);} 50%{ box-shadow:0 0 0 6px rgba(92,107,74,0);} }
+    .pulse-g { animation: pulseGreen 2.4s ease-out infinite; }
+    /* card hover mechanics */
+    .card { transition: transform .35s cubic-bezier(.2,.7,.2,1), border-color .35s, background .35s, box-shadow .35s; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -24px rgba(34,33,29,.5); }
+    .card:hover .arrow { transform: translateX(5px); }
+    .card:hover .num { color: var(--clay); }
+    .arrow { transition: transform .35s cubic-bezier(.2,.7,.2,1); }
+    .card .corner { transition: opacity .35s, transform .35s; opacity:0; transform: scale(.6); }
+    .card:hover .corner { opacity:1; transform: scale(1); }
+    .underline-grow { background-image: linear-gradient(var(--clay),var(--clay)); background-size:0% 1.5px; background-repeat:no-repeat; background-position:0 100%; transition: background-size .4s; }
+    a:hover .underline-grow, .underline-grow:hover { background-size:100% 1.5px; }
+    @media (prefers-reduced-motion: reduce) {
+      .rise{ animation:none; opacity:1; } .pulse,.pulse-g{ animation:none; }
+      .card,.arrow,.corner{ transition:none; }
+    }
+  </style>
+</head>
+<body class="font-sans text-ink min-h-screen relative">
+  <div class="relative z-10 max-w-5xl mx-auto px-5 sm:px-8">
+
+    <!-- ── Masthead ─────────────────────────────────── -->
+    <header class="flex items-center justify-between pt-7 pb-5 rise" style="animation-delay:.02s">
+      <a href="index.html" class="flex items-center gap-2.5 group">
+        <span class="grid place-items-center w-8 h-8 rounded-lg bg-ink text-paper font-display font-semibold text-[15px] leading-none">Z</span>
+        <span class="font-display font-semibold text-[15px] tracking-tight underline-grow">Zonasi FOLUR Luwu</span>
+      </a>
+      <div class="flex items-center gap-2.5 text-[11px] font-mono text-ink-faint">
+        <span id="status-dot" class="w-2 h-2 rounded-full bg-ink-faint"></span>
+        <span id="status-text">memeriksa server…</span>
+      </div>
+    </header>
+
+    <!-- ── Hero ─────────────────────────────────────── -->
+    <section class="pt-10 sm:pt-16 pb-10 border-t border-ink/10">
+      <p class="rise font-mono text-[12px] tracking-[0.18em] uppercase text-clay mb-5" style="animation-delay:.06s">Konsol Admin · AHP–MCE</p>
+      <h1 class="rise font-display font-semibold leading-[1.04] tracking-[-0.02em] text-[clamp(2.4rem,6vw,4.2rem)]" style="animation-delay:.12s">
+        <span id="greeting">Selamat datang</span>,<br />
+        kelola <span class="ital text-clay">pembobotan</span> zonasi.
+      </h1>
+      <p class="rise max-w-xl mt-6 text-ink-soft text-[16px] leading-relaxed" style="animation-delay:.18s">
+        Pusat kendali instrumen Analytic Hierarchy Process untuk penentuan prioritas zonasi
+        komoditas FOLUR di Kabupaten Luwu. Pantau partisipasi ahli, agregasi bobot, dan kelola data mentah.
+      </p>
+    </section>
+
+    <!-- ── Live stats strip ─────────────────────────── -->
+    <section class="rise grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-ink/10 bg-ink/10 mb-14" style="animation-delay:.24s">
+      <div class="bg-paper/60 backdrop-blur px-5 py-5">
+        <p class="font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-2">Ahli terdaftar</p>
+        <p class="font-display font-semibold text-3xl tabular-nums" id="stat-experts">—</p>
+      </div>
+      <div class="bg-paper/60 backdrop-blur px-5 py-5">
+        <p class="font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-2">Perbandingan</p>
+        <p class="font-display font-semibold text-3xl tabular-nums" id="stat-pairs">—</p>
+      </div>
+      <div class="bg-paper/60 backdrop-blur px-5 py-5">
+        <p class="font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-2">Tipologi</p>
+        <p class="font-display font-semibold text-3xl tabular-nums" id="stat-typ">—</p>
+      </div>
+      <div class="bg-paper/60 backdrop-blur px-5 py-5">
+        <p class="font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-2">Konsistensi</p>
+        <p class="font-display font-semibold text-3xl" id="stat-cr">—</p>
+      </div>
+    </section>
+
+    <!-- ── Menu utama (feature cards) ───────────────── -->
+    <p class="rise font-mono text-[11px] tracking-[0.18em] uppercase text-ink-faint mb-4" style="animation-delay:.28s">Alur kerja</p>
+    <div class="grid md:grid-cols-2 gap-4 mb-4">
+      <!-- Form Pakar -->
+      <a href="mce-index.html" class="card rise group relative block rounded-2xl border border-ink/12 bg-gradient-to-br from-clay-bright to-clay text-paper p-7 overflow-hidden" style="animation-delay:.32s">
+        <svg class="corner absolute -top-6 -right-6 w-28 h-28 text-paper/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M12 20h9M3 20l9-15 9 15"/></svg>
+        <div class="flex items-start justify-between mb-10">
+          <span class="num font-mono text-[12px] text-paper/70">01</span>
+          <svg class="arrow w-5 h-5 text-paper/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <h2 class="font-display font-semibold text-2xl mb-1.5">Form Pakar</h2>
+        <p class="text-paper/85 text-[14.5px] leading-relaxed">Kuisioner perbandingan berpasangan untuk satu ahli — 28 penilaian dengan validasi konsistensi langsung.</p>
+      </a>
+      <!-- Hasil Agregat -->
+      <a href="mce-hasil.html" class="card rise group relative block rounded-2xl border border-ink/12 bg-paper/70 backdrop-blur p-7 overflow-hidden" style="animation-delay:.36s">
+        <svg class="corner absolute -top-6 -right-6 w-28 h-28 text-clay/15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M3 3v18h18M7 15l4-5 3 3 4-6"/></svg>
+        <div class="flex items-start justify-between mb-10">
+          <span class="num font-mono text-[12px] text-ink-faint">02</span>
+          <svg class="arrow w-5 h-5 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <h2 class="font-display font-semibold text-2xl mb-1.5">Hasil Agregat</h2>
+        <p class="text-ink-soft text-[14.5px] leading-relaxed">Bobot global indikator (geometric mean) dan perbandingan persepsi antar tipologi ahli.</p>
+      </a>
+    </div>
+
+    <!-- ── Menu sekunder ────────────────────────────── -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+      <!-- Kelola Data (admin CRUD) -->
+      <a href="admin.html" class="card rise group block rounded-2xl border border-ink/12 bg-paper/55 backdrop-blur p-5" style="animation-delay:.40s">
+        <div class="flex items-center justify-between mb-7">
+          <svg class="w-5 h-5 text-clay" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+          <svg class="arrow w-4 h-4 text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <h3 class="font-display font-semibold text-[17px] mb-1">Kelola Data</h3>
+        <p class="text-ink-soft text-[13px] leading-snug">CRUD respons & nilai perbandingan</p>
+      </a>
+      <!-- Peta Zonasi -->
+      <a href="map.html" class="card rise group block rounded-2xl border border-ink/12 bg-paper/55 backdrop-blur p-5" style="animation-delay:.44s">
+        <div class="flex items-center justify-between mb-7">
+          <svg class="w-5 h-5 text-moss" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>
+          <svg class="arrow w-4 h-4 text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <h3 class="font-display font-semibold text-[17px] mb-1">Peta Zonasi</h3>
+        <p class="text-ink-soft text-[13px] leading-snug">WebGIS layer & WFS GeoServer</p>
+      </a>
+      <!-- Modul -->
+      <a href="modul.html" class="card rise group block rounded-2xl border border-ink/12 bg-paper/55 backdrop-blur p-5" style="animation-delay:.48s">
+        <div class="flex items-center justify-between mb-7">
+          <svg class="w-5 h-5 text-clay-deep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5a2 2 0 0 1 2-2h7v18H6a2 2 0 0 0-2 2zM20 3h-3v18h3z"/></svg>
+          <svg class="arrow w-4 h-4 text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <h3 class="font-display font-semibold text-[17px] mb-1">Modul</h3>
+        <p class="text-ink-soft text-[13px] leading-snug">Materi pelatihan zonasi</p>
+      </a>
+      <!-- Beranda -->
+      <a href="index.html" class="card rise group block rounded-2xl border border-ink/12 bg-paper/55 backdrop-blur p-5" style="animation-delay:.52s">
+        <div class="flex items-center justify-between mb-7">
+          <svg class="w-5 h-5 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l9-8 9 8M5 9v11h5v-6h4v6h5V9"/></svg>
+          <svg class="arrow w-4 h-4 text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <h3 class="font-display font-semibold text-[17px] mb-1">Beranda</h3>
+        <p class="text-ink-soft text-[13px] leading-snug">Halaman publik portal</p>
+      </a>
+    </div>
+
+    <!-- ── Komposisi tipologi ───────────────────────── -->
+    <section class="rise mb-20" style="animation-delay:.56s">
+      <div class="flex items-baseline justify-between mb-5">
+        <h2 class="font-display font-semibold text-xl">Komposisi partisipasi</h2>
+        <span class="font-mono text-[11px] text-ink-faint">per tipologi ahli</span>
+      </div>
+      <div id="typ-breakdown" class="space-y-3">
+        <div class="font-mono text-[13px] text-ink-faint py-6 text-center" id="typ-empty">Memuat data partisipasi…</div>
+      </div>
+    </section>
+
+    <!-- ── Footer ───────────────────────────────────── -->
+    <footer class="border-t border-ink/10 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p class="font-mono text-[11px] text-ink-faint">PT. MARETO AGRI PERSADA · UNDP FOLUR INDONESIA</p>
+      <p class="font-mono text-[11px] text-ink-faint" id="env-tag">—</p>
+    </footer>
+  </div>
+
+  <script>
+    /* ── Konfigurasi endpoint (gating localhost vs prod) ── */
+    const IS_LOCAL = ["localhost","127.0.0.1","[::1]"].includes(location.hostname);
+    const API_BASE  = window.AHP_API_BASE  || (IS_LOCAL ? "http://localhost:8091/api"   : "https://mce-api.app.wanantara.org/api");
+
+    document.getElementById("env-tag").textContent = IS_LOCAL ? "LINGKUNGAN · LOKAL" : "LINGKUNGAN · PRODUKSI";
+
+    /* ── Sapaan menurut waktu ── */
+    (function () {
+      const h = new Date().getHours();
+      const g = h < 11 ? "Selamat pagi" : h < 15 ? "Selamat siang" : h < 19 ? "Selamat sore" : "Selamat malam";
+      document.getElementById("greeting").textContent = g;
+    })();
+
+    const TIPOLOGI = {
+      akademisi:  { label: "Akademisi / Peneliti",        color: "#C96442" },
+      pemerintah: { label: "Pemerintah / OPD",            color: "#5C6B4A" },
+      praktisi:   { label: "Praktisi / Penyuluh",         color: "#D97757" },
+      masyarakat: { label: "Tokoh Masyarakat / Petani",   color: "#A8472A" },
+    };
+
+    function setStatus(ok, text) {
+      const dot = document.getElementById("status-dot");
+      const t   = document.getElementById("status-text");
+      t.textContent = text;
+      dot.className = "w-2 h-2 rounded-full " + (ok ? "bg-moss pulse-g" : "bg-clay pulse");
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API_BASE}/experts/`);
+        if (!res.ok) throw new Error("bad status");
+        const data = await res.json();
+        const total = data.total || 0;
+
+        setStatus(true, "server aktif");
+        document.getElementById("stat-experts").textContent = total;
+        document.getElementById("stat-pairs").textContent   = (total * 28).toLocaleString("id-ID");
+        const typCount = Object.keys(data.per_tipologi || {}).length;
+        document.getElementById("stat-typ").textContent = `${typCount}/4`;
+
+        // breakdown bars
+        const wrap = document.getElementById("typ-breakdown");
+        const empty = document.getElementById("typ-empty");
+        const per = data.per_tipologi || {};
+        const max = Math.max(1, ...Object.values(per));
+        const order = ["akademisi","pemerintah","praktisi","masyarakat"];
+        wrap.innerHTML = "";
+        order.forEach((key, idx) => {
+          const n = per[key] || 0;
+          const meta = TIPOLOGI[key];
+          const pct = (n / max) * 100;
+          const row = document.createElement("div");
+          row.className = "rise flex items-center gap-4";
+          row.style.animationDelay = (0.6 + idx * 0.07) + "s";
+          row.innerHTML = `
+            <div class="w-40 shrink-0 text-[13.5px] text-ink-soft">${meta.label}</div>
+            <div class="flex-1 h-7 rounded-lg bg-ink/[0.06] overflow-hidden">
+              <div class="h-full rounded-lg flex items-center justify-end pr-2.5 transition-[width] duration-700"
+                   style="width:${Math.max(pct,9)}%;background:${meta.color}">
+                <span class="font-mono text-[12px] font-medium text-paper">${n}</span>
+              </div>
+            </div>`;
+          wrap.appendChild(row);
+        });
+        if (empty) empty.remove();
+      } catch (e) {
+        setStatus(false, "server tidak terjangkau");
+        document.getElementById("stat-experts").textContent = "—";
+        document.getElementById("stat-pairs").textContent   = "—";
+        document.getElementById("stat-typ").textContent     = "—";
+        const empty = document.getElementById("typ-empty");
+        if (empty) empty.textContent = "Data tidak tersedia — pastikan backend AHP berjalan.";
+      }
+    }
+
+    async function loadConsistency() {
+      try {
+        const res = await fetch(`${API_BASE}/weights/`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const flags = data.konsistensi || {};
+        const oks = Object.keys(flags).filter(k => k.endsWith("_ok"));
+        const passed = oks.filter(k => flags[k]).length;
+        const el = document.getElementById("stat-cr");
+        el.textContent = oks.length ? `${passed}/${oks.length}` : "✓";
+        el.title = "blok matriks dengan CR ≤ 0.10";
+        if (oks.length && passed === oks.length) el.classList.add("text-moss");
+      } catch (e) {
+        document.getElementById("stat-cr").textContent = "—";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => { loadStats(); loadConsistency(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kelola Data Kuisioner — Konsol Admin</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,800;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = { theme: { extend: {
+      fontFamily: { display:["Fraunces","serif"], sans:["Hanken Grotesk","sans-serif"], mono:["JetBrains Mono","monospace"] },
+      colors: {
+        paper:"#EFEDE3",
+        clay:{DEFAULT:"#C96442",bright:"#D97757",deep:"#A8472A",soft:"#E8C7B6"},
+        ink:{DEFAULT:"#22211D",soft:"#56544C",faint:"#8A887E"},
+        moss:{DEFAULT:"#5C6B4A",soft:"#9AA67F"},
+      },
+    }}};
+  </script>
+  <style>
+    :root{--paper:#EFEDE3;--ink:#22211D;--clay:#C96442;}
+    html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+    body{background:radial-gradient(120% 80% at 12% -8%,#F6F2E7 0%,rgba(246,242,231,0) 55%),radial-gradient(110% 70% at 96% 0%,#EDE6D6 0%,rgba(237,230,214,0) 50%),var(--paper);background-attachment:fixed;}
+    .ital{font-style:italic;}
+    @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .rise{animation:rise .5s cubic-bezier(.2,.7,.2,1) both;}
+    /* slider clay */
+    input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:99px;background:linear-gradient(90deg,#9AA67F 0 50%,#E8C7B6 50% 100%);outline:none;}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#C96442;border:3px solid #FAF9F5;box-shadow:0 1px 4px rgba(34,33,29,.35);cursor:pointer;}
+    input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#C96442;border:3px solid #FAF9F5;cursor:pointer;}
+    .editor{transition:transform .4s cubic-bezier(.2,.7,.2,1);}
+    .editor.closed{transform:translateX(105%);}
+    .scrim{transition:opacity .3s;}
+    table.tbl td,table.tbl th{border-bottom:1px solid rgba(34,33,29,.08);}
+    table.tbl tbody tr:hover{background:rgba(255,255,255,.5);}
+  </style>
+</head>
+<body class="font-sans text-ink min-h-screen">
+
+  <!-- ── Gerbang Login ─────────────────────────────── -->
+  <div id="gate" class="fixed inset-0 z-50 grid place-items-center px-5" style="background:radial-gradient(120% 90% at 50% 0%,#F6F2E7,#EAE6DA)">
+    <div class="rise w-full max-w-sm">
+      <div class="text-center mb-7">
+        <div class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-ink text-paper font-display font-semibold text-2xl mb-4">Z</div>
+        <h1 class="font-display font-semibold text-2xl tracking-tight">Konsol Data Kuisioner</h1>
+        <p class="text-ink-soft text-sm mt-1">Masukkan sandi admin untuk mengelola data.</p>
+      </div>
+      <form id="login-form" class="bg-paper/80 backdrop-blur border border-ink/10 rounded-2xl p-5 shadow-[0_20px_48px_-28px_rgba(34,33,29,.5)]">
+        <label class="block font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-2">Sandi admin</label>
+        <input id="pw" type="password" autocomplete="current-password" required
+               class="w-full px-4 py-3 rounded-xl border border-ink/15 bg-white text-ink focus:border-clay focus:ring-4 focus:ring-clay/15 outline-none transition" />
+        <p id="login-err" class="hidden text-clay-deep text-[13px] mt-2"></p>
+        <button type="submit" id="login-btn"
+                class="w-full mt-4 py-3 rounded-xl bg-clay hover:bg-clay-deep text-paper font-semibold transition">Masuk</button>
+      </form>
+      <p class="text-center mt-5"><a href="/mce-hasil.html" class="font-mono text-[12px] text-ink-faint hover:text-clay transition">← kembali ke hasil</a></p>
+    </div>
+  </div>
+
+  <!-- ── Aplikasi ──────────────────────────────────── -->
+  <div id="app" class="hidden max-w-5xl mx-auto px-5 sm:px-8 py-7">
+    <header class="flex items-center justify-between mb-8">
+      <div class="flex items-center gap-3">
+        <a href="bobot.html" class="grid place-items-center w-9 h-9 rounded-lg bg-ink text-paper font-display font-semibold">Z</a>
+        <div>
+          <h1 class="font-display font-semibold text-xl leading-tight">Kelola Data Kuisioner</h1>
+          <p class="font-mono text-[11px] text-ink-faint" id="env-tag">—</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="status-dot" class="w-2 h-2 rounded-full bg-ink-faint"></span>
+        <button id="logout" class="font-mono text-[12px] text-ink-faint hover:text-clay transition">keluar</button>
+      </div>
+    </header>
+
+    <!-- toolbar -->
+    <div class="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-5">
+      <div class="flex items-baseline gap-3">
+        <h2 class="font-display font-semibold text-lg">Respons ahli</h2>
+        <span id="count" class="font-mono text-[12px] text-ink-faint"></span>
+      </div>
+      <div class="flex gap-2">
+        <input id="search" placeholder="Cari id / nama / instansi…"
+               class="px-3.5 py-2 rounded-xl border border-ink/12 bg-white/80 text-sm focus:border-clay focus:ring-4 focus:ring-clay/10 outline-none transition w-full sm:w-64" />
+        <button id="btn-add" class="shrink-0 px-4 py-2 rounded-xl bg-clay hover:bg-clay-deep text-paper text-sm font-semibold transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Tambah Ahli
+        </button>
+      </div>
+    </div>
+
+    <!-- tabel -->
+    <div class="rounded-2xl border border-ink/10 bg-paper/60 backdrop-blur overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="tbl w-full text-sm">
+          <thead>
+            <tr class="text-left text-ink-faint font-mono text-[11px] uppercase tracking-wider">
+              <th class="px-5 py-3 font-medium">ID</th>
+              <th class="px-3 py-3 font-medium">Nama</th>
+              <th class="px-3 py-3 font-medium">Tipologi</th>
+              <th class="px-3 py-3 font-medium">Status</th>
+              <th class="px-3 py-3 font-medium">Tanggal</th>
+              <th class="px-5 py-3 font-medium text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div id="empty" class="hidden py-14 text-center font-mono text-[13px] text-ink-faint"></div>
+    </div>
+  </div>
+
+  <!-- ── Editor slide-over ─────────────────────────── -->
+  <div id="scrim" class="scrim fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm opacity-0 pointer-events-none"></div>
+  <aside id="editor" class="editor closed fixed top-0 right-0 z-40 h-full w-full max-w-xl bg-paper border-l border-ink/12 shadow-2xl flex flex-col">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-ink/10 shrink-0">
+      <h2 id="ed-title" class="font-display font-semibold text-lg">Tambah Ahli</h2>
+      <button id="ed-close" class="w-8 h-8 grid place-items-center rounded-lg hover:bg-ink/5 text-ink-soft transition">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="flex-1 overflow-y-auto px-6 py-5 space-y-6" id="ed-body"></div>
+    <div class="px-6 py-4 border-t border-ink/10 shrink-0 flex items-center justify-between gap-3 bg-paper">
+      <span id="ed-overall" class="font-mono text-[12px] text-ink-faint"></span>
+      <div class="flex gap-2">
+        <button id="ed-cancel" class="px-4 py-2.5 rounded-xl border border-ink/15 text-ink-soft text-sm font-medium hover:bg-ink/5 transition">Batal</button>
+        <button id="ed-save" class="px-5 py-2.5 rounded-xl bg-clay hover:bg-clay-deep text-paper text-sm font-semibold transition">Simpan</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium text-paper bg-ink shadow-lg opacity-0 pointer-events-none transition-opacity"></div>
+
+  <script src="js/mce-config.js"></script>
+  <script>
+    /* ── Konfigurasi ── */
+    const IS_LOCAL = ["localhost","127.0.0.1","[::1]"].includes(location.hostname);
+    document.getElementById("env-tag").textContent = IS_LOCAL ? "LINGKUNGAN · LOKAL" : "LINGKUNGAN · PRODUKSI";
+    const PW_KEY = "AHP_ADMIN_PW";
+    const getPW = () => sessionStorage.getItem(PW_KEY) || "";
+    const TIP_LABEL = Object.fromEntries(TIPOLOGI.map(t => [t.value, t.label]));
+
+    /* ── Util ── */
+    const $ = s => document.querySelector(s);
+    function toast(msg, ok = true) {
+      const t = $("#toast"); t.textContent = msg;
+      t.style.background = ok ? "#22211D" : "#A8472A";
+      t.style.opacity = "1";
+      clearTimeout(t._h); t._h = setTimeout(() => t.style.opacity = "0", 2600);
+    }
+    async function apiGet(path) {
+      const r = await fetch(`${API_BASE}${path}`);
+      if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status);
+      return r.json();
+    }
+    async function apiPost(path, body) {
+      const r = await fetch(`${API_BASE}${path}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admin_token: getPW(), ...body }),
+      });
+      const data = await r.json().catch(()=>({}));
+      if (!r.ok) throw new Error(data.detail || (data.pairwise ? "Data pairwise tidak valid." : `Gagal (${r.status}).`));
+      return data;
+    }
+
+    /* ── Login ── */
+    $("#login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pw = $("#pw").value; const btn = $("#login-btn"); const err = $("#login-err");
+      btn.disabled = true; btn.textContent = "Memeriksa…"; err.classList.add("hidden");
+      try {
+        sessionStorage.setItem(PW_KEY, pw);
+        await fetch(`${API_BASE}/admin/verify/`, {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ admin_token: pw })
+        }).then(r => { if (!r.ok) throw new Error("Sandi salah atau admin nonaktif."); });
+        $("#gate").style.display = "none"; $("#app").classList.remove("hidden");
+        loadList();
+      } catch (ex) {
+        sessionStorage.removeItem(PW_KEY);
+        err.textContent = ex.message; err.classList.remove("hidden");
+      } finally { btn.disabled = false; btn.textContent = "Masuk"; }
+    });
+    $("#logout").addEventListener("click", () => { sessionStorage.removeItem(PW_KEY); location.reload(); });
+
+    /* ── Daftar ── */
+    let ALL = [];
+    async function loadList() {
+      try {
+        const d = await apiGet("/experts/");
+        ALL = d.experts || [];
+        $("#status-dot").className = "w-2 h-2 rounded-full bg-moss";
+        renderList();
+      } catch (e) {
+        $("#status-dot").className = "w-2 h-2 rounded-full bg-clay";
+        $("#empty").classList.remove("hidden");
+        $("#empty").textContent = "Gagal memuat data — pastikan backend berjalan.";
+      }
+    }
+    function fmtDate(s){ try { return new Date(s).toLocaleString("id-ID",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); } catch(e){ return s||"—"; } }
+    function renderList() {
+      const q = $("#search").value.trim().toLowerCase();
+      const rows = ALL.filter(r => !q || [r.expert_id,r.nama,r.instansi].join(" ").toLowerCase().includes(q));
+      $("#count").textContent = `${rows.length} dari ${ALL.length}`;
+      const tb = $("#rows"); tb.innerHTML = "";
+      $("#empty").classList.toggle("hidden", rows.length > 0);
+      if (!rows.length) { $("#empty").textContent = q ? "Tidak ada yang cocok." : "Belum ada data. Klik “Tambah Ahli”."; return; }
+      rows.forEach(r => {
+        const tr = document.createElement("tr");
+        const ok = r.is_valid;
+        tr.innerHTML = `
+          <td class="px-5 py-3 font-mono text-[13px] font-medium">${r.expert_id}</td>
+          <td class="px-3 py-3">${r.nama || '<span class="text-ink-faint">—</span>'}</td>
+          <td class="px-3 py-3 text-ink-soft">${TIP_LABEL[r.tipologi]||r.tipologi}</td>
+          <td class="px-3 py-3"><span class="inline-flex items-center text-[12px] font-medium px-2.5 py-1 rounded-full"
+            style="${ok?'background:#E7EBDD;color:#4F5E3C':'background:#C0492E;color:#fff'}">
+            ${ok?'Konsisten':'Perlu cek'}</span></td>
+          <td class="px-3 py-3 text-ink-faint font-mono text-[12px]">${fmtDate(r.submitted_at)}</td>
+          <td class="px-5 py-3 text-right whitespace-nowrap">
+            <button data-edit="${r.expert_id}" class="text-[13px] font-medium text-clay hover:text-clay-deep transition">Edit</button>
+            <button data-del="${r.expert_id}" class="ml-3 text-[13px] font-medium text-ink-faint hover:text-clay-deep transition">Hapus</button>
+          </td>`;
+        tb.appendChild(tr);
+      });
+    }
+    $("#search").addEventListener("input", renderList);
+    $("#rows").addEventListener("click", (e) => {
+      const ed = e.target.closest("[data-edit]"); const dl = e.target.closest("[data-del]");
+      if (ed) openEditor(ed.dataset.edit);
+      if (dl) doDelete(dl.dataset.del);
+    });
+
+    /* ── Hapus ── */
+    async function doDelete(id) {
+      if (!confirm(`Hapus respons ahli "${id}" beserta seluruh nilai perbandingannya? Tindakan ini tidak bisa dibatalkan.`)) return;
+      try { await apiPost("/admin/delete/", { expert_id: id }); toast(`Ahli ${id} dihapus.`); loadList(); }
+      catch (e) { toast(e.message, false); }
+    }
+
+    /* ── Editor ── */
+    const COMPS = buildComparisons();        // 28 perbandingan {block,i,j,left,right,blockTitle}
+    let EDIT_ID = null;                       // null = tambah baru
+
+    function openEditor(id) {
+      EDIT_ID = id || null;
+      $("#ed-title").textContent = id ? `Edit — ${id}` : "Tambah Ahli";
+      buildForm();
+      if (id) {
+        apiGet(`/experts/${encodeURIComponent(id)}/`).then(fillForm).catch(e=>toast(e.message,false));
+      }
+      $("#editor").classList.remove("closed");
+      $("#scrim").style.opacity = "1"; $("#scrim").style.pointerEvents = "auto";
+    }
+    function closeEditor() {
+      $("#editor").classList.add("closed");
+      $("#scrim").style.opacity = "0"; $("#scrim").style.pointerEvents = "none";
+    }
+    $("#ed-close").addEventListener("click", closeEditor);
+    $("#ed-cancel").addEventListener("click", closeEditor);
+    $("#scrim").addEventListener("click", closeEditor);
+    $("#btn-add").addEventListener("click", () => openEditor(null));
+
+    function readout(v){ v = +v; const n = Math.abs(v)||1; const verb = SAATY_VERBAL[n]||"";
+      if (n===1) return `<span class="text-ink-soft">sama penting</span>`;
+      return v>0 ? `← <b>${n}×</b> <span class="text-ink-faint">(${verb})</span>` : `<b>${n}×</b> → <span class="text-ink-faint">(${verb})</span>`; }
+
+    function buildForm() {
+      const body = $("#ed-body");
+      const tipOpts = TIPOLOGI.map(t=>`<option value="${t.value}">${t.label}</option>`).join("");
+      let html = `
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div><label class="block font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-1.5">ID Ahli *</label>
+            <input id="f-id" ${EDIT_ID?'readonly':''} placeholder="mis. AKA-06"
+              class="w-full px-3 py-2 rounded-lg border border-ink/15 bg-white ${EDIT_ID?'opacity-60 cursor-not-allowed':''} focus:border-clay focus:ring-4 focus:ring-clay/10 outline-none text-sm"/></div>
+          <div><label class="block font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-1.5">Tipologi *</label>
+            <select id="f-tip" class="w-full px-3 py-2 rounded-lg border border-ink/15 bg-white focus:border-clay focus:ring-4 focus:ring-clay/10 outline-none text-sm">${tipOpts}</select></div>
+          <div><label class="block font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-1.5">Nama</label>
+            <input id="f-nama" class="w-full px-3 py-2 rounded-lg border border-ink/15 bg-white focus:border-clay focus:ring-4 focus:ring-clay/10 outline-none text-sm"/></div>
+          <div><label class="block font-mono text-[11px] uppercase tracking-wider text-ink-faint mb-1.5">Instansi</label>
+            <input id="f-inst" class="w-full px-3 py-2 rounded-lg border border-ink/15 bg-white focus:border-clay focus:ring-4 focus:ring-clay/10 outline-none text-sm"/></div>
+        </div>
+        <p class="text-[12.5px] text-ink-soft leading-relaxed border-l-2 border-clay/40 pl-3">
+          Geser ke <b>kiri</b> bila unsur kiri lebih penting, ke <b>kanan</b> bila unsur kanan lebih penting. Tengah = sama penting (skala Saaty 1–9).
+        </p>`;
+      BLOCK_ORDER.forEach(block => {
+        const comps = COMPS.filter(c => c.block === block);
+        html += `<div class="rounded-xl border border-ink/10 bg-white/50 overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-ink/8 bg-paper/60">
+            <span class="font-display font-semibold text-[14px]">${BLOCKS[block].title}</span>
+            <span class="cr-chip font-mono text-[11px] text-ink-faint" data-cr="${block}">CR —</span>
+          </div>
+          <div class="divide-y divide-ink/6">`;
+        comps.forEach((c, idx) => {
+          const gi = COMPS.indexOf(c);
+          html += `<div class="px-4 py-3" data-comp="${gi}" data-block="${c.block}" data-i="${c.i}" data-j="${c.j}">
+            <div class="flex items-center justify-between text-[12.5px] mb-2 gap-2">
+              <span class="text-right flex-1 text-ink">${c.left}</span>
+              <span class="ro shrink-0 px-2 font-mono text-[12px] text-ink-soft text-center" style="min-width:118px">${readout(1)}</span>
+              <span class="flex-1 text-ink">${c.right}</span>
+            </div>
+            <input type="range" min="-9" max="9" step="1" value="1" class="w-full sld"/>
+          </div>`;
+        });
+        html += `</div></div>`;
+      });
+      body.innerHTML = html;
+      // listeners slider
+      body.querySelectorAll("[data-comp]").forEach(row => {
+        const sld = row.querySelector(".sld"); const ro = row.querySelector(".ro");
+        sld.addEventListener("input", () => {
+          let v = +sld.value; if (v === 0) { v = 1; sld.value = 1; }
+          ro.innerHTML = readout(v); scheduleValidate();
+        });
+      });
+      scheduleValidate();
+    }
+
+    function fillForm(d) {
+      $("#f-id").value = d.expert_id; $("#f-nama").value = d.nama||"";
+      $("#f-inst").value = d.instansi||""; $("#f-tip").value = d.tipologi;
+      const map = {}; (d.pairwise||[]).forEach(p => map[`${p.block}|${p.i}|${p.j}`] = p.value);
+      $("#ed-body").querySelectorAll("[data-comp]").forEach(row => {
+        const k = `${row.dataset.block}|${row.dataset.i}|${row.dataset.j}`;
+        const v = map[k]; const sld = row.querySelector(".sld"); const ro = row.querySelector(".ro");
+        if (v !== undefined) { sld.value = v; ro.innerHTML = readout(v); }
+      });
+      scheduleValidate();
+    }
+
+    function collectPairwise() {
+      return [...$("#ed-body").querySelectorAll("[data-comp]")].map(row => {
+        let v = +row.querySelector(".sld").value; if (v === 0) v = 1;
+        return { block: row.dataset.block, i: +row.dataset.i, j: +row.dataset.j, value: v };
+      });
+    }
+
+    /* ── Validasi konsistensi langsung ── */
+    let _vt;
+    function scheduleValidate(){ clearTimeout(_vt); _vt = setTimeout(runValidate, 450); }
+    async function runValidate() {
+      try {
+        const r = await fetch(`${API_BASE}/validate/`, {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ pairwise: collectPairwise() })
+        });
+        const d = await r.json();
+        document.querySelectorAll("[data-cr]").forEach(chip => {
+          const b = chip.dataset.cr; const res = (d.per_block||{})[b];
+          if (!res) { chip.textContent = "CR —"; chip.style.color = "#8A887E"; return; }
+          chip.textContent = `CR ${res.CR.toFixed(3)}`;
+          chip.style.color = res.consistent ? "#5C6B4A" : "#C96442";
+        });
+        const ov = $("#ed-overall");
+        ov.textContent = d.all_consistent ? "✓ Semua blok konsisten" : "⚠ Ada blok belum konsisten (CR > 0,10)";
+        ov.style.color = d.all_consistent ? "#5C6B4A" : "#C96442";
+      } catch(e){ /* diam */ }
+    }
+
+    /* ── Simpan ── */
+    $("#ed-save").addEventListener("click", async () => {
+      const id = $("#f-id").value.trim();
+      if (!id) { toast("ID Ahli wajib diisi.", false); return; }
+      if (!EDIT_ID && ALL.some(r => r.expert_id === id)) {
+        if (!confirm(`ID "${id}" sudah ada. Lanjutkan akan menimpa data lama. Teruskan?`)) return;
+      }
+      const btn = $("#ed-save"); btn.disabled = true; btn.textContent = "Menyimpan…";
+      try {
+        await apiPost("/admin/save/", {
+          expert_id: id, nama: $("#f-nama").value.trim(),
+          instansi: $("#f-inst").value.trim(), tipologi: $("#f-tip").value,
+          pairwise: collectPairwise(),
+        });
+        toast(EDIT_ID ? `Perubahan ${id} disimpan.` : `Ahli ${id} ditambahkan.`);
+        closeEditor(); loadList();
+      } catch (e) { toast(e.message, false); }
+      finally { btn.disabled = false; btn.textContent = "Simpan"; }
+    });
+
+    /* ── Auto-login bila sandi masih tersimpan di sesi ── */
+    if (getPW()) {
+      fetch(`${API_BASE}/admin/verify/`, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ admin_token: getPW() }) })
+        .then(r => { if (r.ok) { $("#gate").style.display="none"; $("#app").classList.remove("hidden"); loadList(); } });
+    }
+  </script>
+</body>
+</html>
